@@ -141,6 +141,9 @@ public class FileExplorer extends JPanel {
 
         Messages.addListener(language -> refreshText());
         Theme.addListener(this::applyTheme);
+        // The palette must be applied now, not only on a later change: the look
+        // and feel defaults are light whatever the chosen theme is.
+        applyTheme();
         refreshText();
     }
 
@@ -161,7 +164,7 @@ public class FileExplorer extends JPanel {
         repaint();
     }
 
-    private void applyTheme() {
+    void applyTheme() {
         setBackground(Theme.WINDOW_BACKGROUND);
         caption.setForeground(Theme.WINDOW_FOREGROUND);
         tree.setBackground(Theme.isDark() ? Theme.EDITOR_BACKGROUND : java.awt.Color.WHITE);
@@ -362,9 +365,15 @@ public class FileExplorer extends JPanel {
                                                       boolean focused) {
             super.getTreeCellRendererComponent(tree, value, selected, expanded, leaf, row, focused);
             setFont(Theme.mono(12));
-            setBackground(selected ? Theme.EDITOR_SELECTION
-                    : (Theme.isDark() ? Theme.EDITOR_BACKGROUND : java.awt.Color.WHITE));
-            setForeground(Theme.EDITOR_FOREGROUND);
+            // The row background is set explicitly and the label made opaque,
+            // because the tree's own background shows through otherwise and
+            // left dark blocks behind every name in the light theme.
+            java.awt.Color rowBackground = Theme.isDark()
+                    ? Theme.EDITOR_BACKGROUND : java.awt.Color.WHITE;
+            setOpaque(true);
+            setBackground(selected ? Theme.EDITOR_SELECTION : rowBackground);
+            setForeground(selected && Theme.isDark()
+                    ? java.awt.Color.WHITE : Theme.EDITOR_FOREGROUND);
             if (value instanceof Node node && node.file() != null) {
                 setText(node.file().getName());
                 setToolTipText(node.file().getAbsolutePath());

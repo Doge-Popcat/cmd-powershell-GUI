@@ -286,7 +286,13 @@ public class MainFrame extends JFrame {
                 hideAllCompletions();
             }
         });
-        Theme.addListener(this::applyTheme);
+        Theme.addListener(this::themeChanged);
+        // Style the window now: the look and feel defaults are light whatever
+        // palette is selected, so waiting for a change would leave it half white.
+        applyTheme();
+        // Style the window now: the look and feel defaults are light whatever
+        // palette is chosen, so waiting for a change would leave it half white.
+        applyTheme();
         addWindowStateListener(e -> {
             if ((e.getNewState() & java.awt.Frame.ICONIFIED) != 0) {
                 hideAllCompletions();
@@ -424,6 +430,8 @@ public class MainFrame extends JFrame {
         bar.add(view);
 
         JMenu help = menu(Msg.MENU_HELP, 'H');
+        help.add(item(helpAction));
+        help.addSeparator();
         help.add(item(aboutAction));
         bar.add(help);
 
@@ -515,17 +523,69 @@ public class MainFrame extends JFrame {
         });
     }
 
-    /** Re-applies the palette to the window chrome after a theme change. */
-    private void applyTheme() {
+    /**
+     * Restyles the window after the palette has actually changed.
+     *
+     * <p>Restyling the component tree is what makes the menu bar, the tab strips
+     * and the scroll bars follow the palette. It also replaces every component's
+     * input and action map, which drops keys such as the console's history
+     * bindings, so it may only run on a real change; the surfaces put their keys
+     * back in their own {@code applyTheme}.</p>
+     */
+    private void themeChanged() {
+        SwingUtilities.updateComponentTreeUI(this);
+        applyTheme();
+    }
+
+    /**
+     * Re-applies the palette to every surface.
+     *
+     * <p>Called once the window is built, and again from {@link #themeChanged()}
+     * after the look and feel has been refreshed. Each surface is asked to style
+     * itself rather than relying on listener order, so the result is the same
+     * however the components happened to be created.</p>
+     */
+    void applyTheme() {
+        SwingUtilities.updateComponentTreeUI(this);
+
         getContentPane().setBackground(Theme.WINDOW_BACKGROUND);
         setBackground(Theme.WINDOW_BACKGROUND);
         splitPane.setBackground(Theme.WINDOW_BACKGROUND);
+        splitPane.setBorder(BorderFactory.createEmptyBorder());
+        if (horizontalSplit != null) {
+            horizontalSplit.setBackground(Theme.WINDOW_BACKGROUND);
+            horizontalSplit.setBorder(BorderFactory.createEmptyBorder());
+        }
         editorTabs.setBackground(Theme.WINDOW_BACKGROUND);
         bottomTabs.setBackground(Theme.WINDOW_BACKGROUND);
-        statusBar.setBackground(Theme.WINDOW_BACKGROUND);
-        // The look and feel defaults changed, so ask Swing to restyle the tree.
-        SwingUtilities.updateComponentTreeUI(this);
+        bottomTabs.setForeground(Theme.WINDOW_FOREGROUND);
+        getJMenuBar().setBackground(Theme.WINDOW_BACKGROUND);
+        getJMenuBar().setForeground(Theme.WINDOW_FOREGROUND);
+
+        // Restyling the tree resets every colour and font to the look and feel
+        // default, so each surface is asked to style itself again afterwards.
+        statusBar.applyTheme();
+        locationBar.applyTheme();
+        toolBar.applyTheme();
+        console.applyTheme();
+        problems.applyTheme();
+        explorer.applyTheme();
+        for (EditorTab tab : editorTabs.tabs()) {
+            tab.applyTheme();
+        }
+        toolBar.restyleFonts();
+        applyFont(FontChooserDialog.Target.EDITOR, editorFont);
+        applyFont(FontChooserDialog.Target.CONSOLE, consoleFont);
+        problems.setFindings(problems.findings());
+        // Restyling does not mark the previously painted areas dirty on its own,
+        // and a stale dark corner left in a light theme is exactly the half
+        // painted window this is meant to avoid, so the tree is invalidated.
+        invalidate();
+        validate();
         repaint();
+        for (java.awt.Window window : java.awt.Window.getWindows()) {
+            window.repaint();
+        }
     }
 
     /**

@@ -78,12 +78,15 @@ public class LocationBar extends JPanel {
         path.setPreferredSize(new Dimension(420, 24));
         Messages.addListener(language -> refreshText());
         Theme.addListener(this::applyTheme);
+        // The palette must be applied now, not only on a later change: the look
+        // and feel defaults are light whatever the chosen theme is.
+        applyTheme();
         refreshText();
         show(null);
     }
 
     /** Re-applies the palette after a theme change. */
-    private void applyTheme() {
+    void applyTheme() {
         setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.tint(Theme.GUTTER_BACKGROUND, 40)),
                 BorderFactory.createEmptyBorder(3, 6, 3, 6)));

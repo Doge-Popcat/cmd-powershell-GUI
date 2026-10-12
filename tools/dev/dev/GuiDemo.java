@@ -86,6 +86,8 @@ public final class GuiDemo {
         boolean consoleMode = mode.equals("console");
         boolean fontsMode = mode.equals("fonts");
         boolean helpMode = mode.equals("help");
+        boolean lightMode = mode.equals("light");
+        boolean singleMode = mode.equals("single");
         String script = powershell ? PS_SCRIPT
                 : typo ? TYPO_SCRIPT
                 : (danger || confirm) ? DANGER_SCRIPT : CMD_SCRIPT;
@@ -127,6 +129,27 @@ public final class GuiDemo {
                 });
                 timer.setRepeats(false);
                 timer.start();
+            }
+            if (lightMode) {
+                // A user picks the theme from the menu, so apply it after the
+                // window is up rather than during construction.
+                javax.swing.Timer timer = new javax.swing.Timer(900,
+                        e -> com.dogepopcat.cpgui.ui.Theme.apply(
+                                com.dogepopcat.cpgui.ui.Theme.Mode.LIGHT));
+                timer.setRepeats(false);
+                timer.start();
+            }
+            if (singleMode) {
+                frame.setSingleLineMode(true);
+                frame.editorTabs().current().setText(String.join("\n",
+                        "echo first line",
+                        "echo second line",
+                        "exyzxo-typo",
+                        "echo fourth line"));
+                frame.editorTabs().current().markLineResult(0, true);
+                frame.editorTabs().current().markLineResult(1, true);
+                frame.editorTabs().current().markLineResult(2, false);
+                frame.editorTabs().current().moveCaretToLine(3);
             }
             if (helpMode) {
                 javax.swing.Timer timer = new javax.swing.Timer(900, e -> frame.showHelp());

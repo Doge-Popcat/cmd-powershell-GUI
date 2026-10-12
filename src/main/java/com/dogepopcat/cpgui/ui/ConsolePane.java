@@ -104,6 +104,24 @@ public class ConsolePane extends JPanel {
         input.setCaretColor(Theme.CONSOLE_FOREGROUND);
         input.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
         input.addActionListener(e -> submitInput());
+        installHistoryKeys();
+        row.add(input, BorderLayout.CENTER);
+        Messages.addListener(language -> refreshText());
+        Theme.addListener(this::applyTheme);
+        // The palette must be applied now, not only on a later change: the look
+        // and feel defaults are light whatever the chosen theme is.
+        applyTheme();
+        refreshText();
+        return row;
+    }
+
+    /**
+     * Binds Up and Down to the command history.
+     *
+     * <p>Reinstalled after a theme change, because restyling the component tree
+     * replaces the input and action maps and would otherwise drop the keys.</p>
+     */
+    private void installHistoryKeys() {
         input.getInputMap(JComponent.WHEN_FOCUSED).put(
                 KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_UP, 0), "cpgui.console.prev");
         input.getInputMap(JComponent.WHEN_FOCUSED).put(
@@ -124,15 +142,11 @@ public class ConsolePane extends JPanel {
                 recall(1);
             }
         });
-        row.add(input, BorderLayout.CENTER);
-        Messages.addListener(language -> refreshText());
-        Theme.addListener(this::applyTheme);
-        refreshText();
-        return row;
     }
 
     /** Re-applies the palette after a theme change. */
-    private void applyTheme() {
+    void applyTheme() {
+        installHistoryKeys();
         setPalette(Theme.CONSOLE_BACKGROUND, Theme.CONSOLE_FOREGROUND);
         setBackground(Theme.CONSOLE_BACKGROUND);
         repaint();

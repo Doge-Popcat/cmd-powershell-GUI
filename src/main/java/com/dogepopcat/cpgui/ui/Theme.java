@@ -1,5 +1,6 @@
 package com.dogepopcat.cpgui.ui;
 
+import javax.swing.BorderFactory;
 import javax.swing.UIManager;
 import java.awt.Color;
 import java.awt.Font;
@@ -81,6 +82,10 @@ public final class Theme {
     /** Used by the administrator button while running elevated. */
     public static Color BUTTON_ELEVATED;
     public static Color BUTTON_ELEVATED_BORDER;
+    /** Used by a toggle button while it is switched on. */
+    public static Color BUTTON_ACTIVE;
+    /** Text colour on a switched on toggle button. */
+    public static Color BUTTON_ACTIVE_TEXT;
     /** Used by the administrator button while running as a normal user. */
     public static Color BUTTON_ADMIN_AVAILABLE;
     public static Color BUTTON_ADMIN_BORDER;
@@ -132,8 +137,22 @@ public final class Theme {
             lightPalette();
         }
         installUIDefaults(dark);
-        for (Runnable listener : List.copyOf(LISTENERS)) {
-            listener.run();
+        // Components may only be touched on the event thread.
+        Runnable notify = () -> {
+            for (Runnable listener : List.copyOf(LISTENERS)) {
+                listener.run();
+            }
+        };
+        if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+            notify.run();
+        } else {
+            try {
+                javax.swing.SwingUtilities.invokeAndWait(notify);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } catch (java.lang.reflect.InvocationTargetException e) {
+                throw new IllegalStateException("Could not apply the theme", e.getCause());
+            }
         }
     }
 
@@ -215,6 +234,8 @@ public final class Theme {
         BUTTON_HOVER = new Color(0x4A, 0x4E, 0x52);
         BUTTON_ELEVATED = new Color(0x5A, 0x45, 0x1E);
         BUTTON_ELEVATED_BORDER = new Color(0xC8, 0x8A, 0x18);
+        BUTTON_ACTIVE = new Color(0x2F, 0x6B, 0x4F);
+        BUTTON_ACTIVE_TEXT = new Color(0xF0, 0xFF, 0xF4);
         BUTTON_ADMIN_AVAILABLE = new Color(0x2C, 0x45, 0x2C);
         BUTTON_ADMIN_BORDER = new Color(0x4C, 0x9A, 0x4C);
 
@@ -252,6 +273,8 @@ public final class Theme {
         BUTTON_HOVER = new Color(0xE4, 0xEC, 0xF6);
         BUTTON_ELEVATED = new Color(0xFF, 0xE2, 0xB8);
         BUTTON_ELEVATED_BORDER = new Color(0xE0, 0x93, 0x1F);
+        BUTTON_ACTIVE = new Color(0x2F, 0x8B, 0x5C);
+        BUTTON_ACTIVE_TEXT = java.awt.Color.WHITE;
         BUTTON_ADMIN_AVAILABLE = new Color(0xE3, 0xF2, 0xE3);
         BUTTON_ADMIN_BORDER = new Color(0x4C, 0x9A, 0x4C);
 
@@ -309,6 +332,9 @@ public final class Theme {
         Color background = dark ? WINDOW_BACKGROUND : new Color(0xF4, 0xF5, 0xF7);
         Color text = dark ? WINDOW_FOREGROUND : new Color(0x1F, 0x23, 0x29);
         Color field = dark ? new Color(0x2B, 0x2D, 0x30) : Color.WHITE;
+        Color selection = dark ? new Color(0x2F, 0x54, 0x7A) : new Color(0xCC, 0xE0, 0xF5);
+        Color line = dark ? new Color(0x4A, 0x4E, 0x52) : new Color(0xD0, 0xD4, 0xDA);
+        Color muted = dark ? WINDOW_MUTED : new Color(0x5A, 0x60, 0x68);
 
         set("control", control);
         set("info", background);
@@ -361,19 +387,89 @@ public final class Theme {
         set("Table.selectionForeground", text);
         set("ScrollPane.background", background);
         set("Viewport.background", field);
-        set("ScrollBar.background", control);
-        set("ScrollBar.thumb", dark ? new Color(0x5A, 0x5E, 0x62) : new Color(0xC0, 0xC4, 0xCA));
-        set("ScrollBar.thumbDarkShadow", control);
-        set("ScrollBar.thumbHighlight", control);
-        set("ScrollBar.thumbShadow", control);
-        set("ScrollBar.track", background);
-        set("ScrollBar.trackHighlight", background);
+        // The Windows scroll bar paints its own themed arrows and track, which
+        // stay light in a dark palette, so the basic one is used and coloured.
+        set("ScrollBarUI", "javax.swing.plaf.basic.BasicScrollBarUI");
+        set("ScrollBar.width", 12);
+        set("ScrollBar.background", dark ? new Color(0x2B, 0x2D, 0x30) : control);
+        set("ScrollBar.foreground", text);
+        set("ScrollBar.thumb", dark ? new Color(0x55, 0x59, 0x5E) : new Color(0xB4, 0xB9, 0xC0));
+        set("ScrollBar.thumbDarkShadow", dark ? new Color(0x2B, 0x2D, 0x30) : control);
+        set("ScrollBar.thumbHighlight", dark ? new Color(0x6A, 0x6F, 0x75) : new Color(0xD8, 0xDC, 0xE1));
+        set("ScrollBar.thumbShadow", dark ? new Color(0x3A, 0x3D, 0x41) : new Color(0x9A, 0xA0, 0xA8));
+        set("ScrollBar.track", dark ? new Color(0x21, 0x23, 0x26) : new Color(0xE8, 0xEA, 0xED));
+        set("ScrollBar.trackHighlight", dark ? new Color(0x21, 0x23, 0x26) : new Color(0xE8, 0xEA, 0xED));
+        set("ScrollBar.border", BorderFactory.createEmptyBorder());
+        set("ScrollBar.gradient", null);
         set("SplitPane.background", background);
         set("SplitPane.dividerSize", 6);
         set("ToolTip.background", dark ? new Color(0x3C, 0x3F, 0x41) : new Color(0xFF, 0xFF, 0xE1));
         set("ToolTip.foreground", text);
         set("Separator.foreground", dark ? new Color(0x4A, 0x4E, 0x52) : new Color(0xD0, 0xD4, 0xDA));
         set("Panel.foreground", text);
+        // Trees and tables paint their own background wherever there is no cell,
+        // which is the empty area below the last row. Without these keys that
+        // area stays white however carefully the cells are drawn.
+        set("Tree.background", field);
+        set("Tree.textBackground", field);
+        set("Tree.foreground", text);
+        set("Tree.textForeground", text);
+        set("Tree.selectionBackground", selection);
+        set("Tree.selectionForeground", dark ? Color.WHITE : text);
+        set("Tree.hash", line);
+        set("Tree.line", line);
+        set("Tree.leftChildIndent", 12);
+        set("Tree.rightChildIndent", 8);
+        // The Windows look and feel draws a themed white gradient over the
+        // header whatever its background is, so the basic header is used instead.
+        set("TableHeaderUI", "javax.swing.plaf.basic.BasicTableHeaderUI");
+        set("TableHeader.background", dark ? new Color(0x33, 0x36, 0x39) : new Color(0xE8, 0xEA, 0xED));
+        set("TableHeader.foreground", text);
+        set("TableHeader.cellBorder", BorderFactory.createMatteBorder(0, 0, 1, 1, line));
+        set("Table.focusCellForeground", text);
+        set("Table.focusCellBackground", field);
+        set("EditorPane.background", field);
+        set("EditorPane.foreground", text);
+        set("EditorPane.caretForeground", text);
+        set("FormattedTextField.background", field);
+        set("FormattedTextField.foreground", text);
+        set("PasswordField.background", field);
+        set("PasswordField.foreground", text);
+        set("TextPane.caretForeground", text);
+        set("TextArea.caretForeground", text);
+        set("TabbedPane.selectHighlight", background);
+        set("TabbedPane.focus", background);
+        set("TabbedPane.borderHightlightColor", background);
+        set("TabbedPane.unselectedBackground", dark ? new Color(0x33, 0x36, 0x39) : control);
+        set("TabbedPane.contentBorderInsets", new javax.swing.plaf.InsetsUIResource(1, 0, 0, 0));
+        set("SplitPane.highlight", line);
+        set("SplitPane.shadow", background);
+        set("SplitPane.darkShadow", background);
+        set("SplitPane.foreground", text);
+        set("SplitPaneUI", "javax.swing.plaf.basic.BasicSplitPaneUI");
+        set("RadioButton.background", background);
+        set("RadioButton.foreground", text);
+        set("CheckBox.background", background);
+        set("CheckBox.foreground", text);
+        set("RadioButtonMenuItem.background", background);
+        set("RadioButtonMenuItem.foreground", text);
+        set("CheckBoxMenuItem.background", background);
+        set("CheckBoxMenuItem.foreground", text);
+        set("Menu.acceleratorForeground", muted);
+        set("MenuItem.acceleratorForeground", muted);
+        set("MenuBar.border", BorderFactory.createEmptyBorder());
+        set("ToolBar.background", background);
+        set("ToolBar.foreground", text);
+        set("ToolBar.border", BorderFactory.createEmptyBorder());
+        set("ScrollPane.border", BorderFactory.createEmptyBorder());
+        set("List.selectionBackground", selection);
+        set("List.selectionForeground", dark ? Color.WHITE : text);
+        set("Slider.background", background);
+        set("Slider.foreground", text);
+        set("ProgressBar.background", field);
+        set("ProgressBar.foreground", text);
+        set("ProgressBar.selectionBackground", text);
+        set("ProgressBar.selectionForeground", field);
     }
 
     private static void set(String key, Object value) {

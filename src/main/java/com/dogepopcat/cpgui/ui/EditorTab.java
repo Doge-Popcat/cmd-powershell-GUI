@@ -109,10 +109,13 @@ public class EditorTab extends JPanel {
         diagnostics = new DiagnosticsOverlay(this);
         completion = new CompletionController(this);
         Theme.addListener(this::applyTheme);
+        // The palette must be applied now, not only on a later change: the look
+        // and feel defaults are light whatever the chosen theme is.
+        applyTheme();
     }
 
     /** Re-applies the palette after a theme change. */
-    private void applyTheme() {
+    void applyTheme() {
         textPane.setBackground(Theme.EDITOR_BACKGROUND);
         textPane.setForeground(Theme.EDITOR_FOREGROUND);
         textPane.setCaretColor(Theme.EDITOR_CARET);

@@ -84,11 +84,14 @@ public class AppToolBar extends JToolBar {
         add(interpreter);
         Messages.addListener(language -> refreshText());
         Theme.addListener(this::applyTheme);
+        // The palette must be applied now, not only on a later change: the look
+        // and feel defaults are light whatever the chosen theme is.
+        applyTheme();
         refreshText();
     }
 
     /** Re-applies the palette to every button after a theme change. */
-    private void applyTheme() {
+    void applyTheme() {
         setBackground(Theme.WINDOW_BACKGROUND);
         setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.tint(Theme.GUTTER_BACKGROUND, 40)),
@@ -103,9 +106,7 @@ public class AppToolBar extends JToolBar {
         }
         setElevated(elevated);
         if (singleLineToggle != null) {
-            singleLineToggle.setBackground(Theme.BUTTON_BACKGROUND);
-            singleLineToggle.setForeground(Theme.WINDOW_FOREGROUND);
-            singleLineToggle.setBorder(Theme.raisedBorder());
+            styleToggle(singleLineToggle);
         }
         repaint();
     }
@@ -165,8 +166,24 @@ public class AppToolBar extends JToolBar {
         toggle.setBorder(Theme.raisedBorder());
         toggle.setBackground(Theme.BUTTON_BACKGROUND);
         toggle.setForeground(Theme.WINDOW_FOREGROUND);
+        // A toggle reads as pressed when its edge is sunken rather than raised,
+        // which shows the state without relying on colour alone.
+        toggle.getModel().addChangeListener(e -> styleToggle(toggle));
         singleLineToggle = toggle;
+        styleToggle(toggle);
         return toggle;
+    }
+
+    /** Gives the toggle its raised or sunken edge for the current state. */
+    private void styleToggle(JToggleButton toggle) {
+        boolean on = toggle.isSelected();
+        toggle.setBorder(on
+                ? javax.swing.BorderFactory.createCompoundBorder(
+                        javax.swing.BorderFactory.createLoweredBevelBorder(),
+                        javax.swing.BorderFactory.createEmptyBorder(3, 8, 3, 8))
+                : Theme.raisedBorder());
+        toggle.setBackground(on ? Theme.BUTTON_ACTIVE : Theme.BUTTON_BACKGROUND);
+        toggle.setForeground(on ? Theme.BUTTON_ACTIVE_TEXT : Theme.WINDOW_FOREGROUND);
     }
 
     private Component strut() {

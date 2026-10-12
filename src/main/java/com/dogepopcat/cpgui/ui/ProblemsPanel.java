@@ -39,6 +39,7 @@ public class ProblemsPanel extends JPanel {
 
     private final Model model = new Model();
     private final JTable table = new JTable(model);
+    private final JScrollPane scroll;
     private final JLabel summary = new JLabel();
     private IntConsumer lineNavigator = line -> { };
 
@@ -74,18 +75,14 @@ public class ProblemsPanel extends JPanel {
 
         summary.setBorder(BorderFactory.createEmptyBorder(3, 8, 3, 8));
 
-        JScrollPane scroll = new JScrollPane(table);
+        scroll = new JScrollPane(table);
         scroll.setBorder(BorderFactory.createEmptyBorder());
         add(scroll, BorderLayout.CENTER);
         add(summary, BorderLayout.SOUTH);
 
         Messages.addListener(language -> refreshText());
-        Theme.addListener(() -> {
-            setBackground(Theme.WINDOW_BACKGROUND);
-            summary.setForeground(Theme.WINDOW_FOREGROUND);
-            table.setBackground(Theme.isDark() ? Theme.EDITOR_BACKGROUND : java.awt.Color.WHITE);
-            table.repaint();
-        });
+        Theme.addListener(this::applyTheme);
+        applyTheme();
         refreshText();
     }
 
@@ -111,6 +108,52 @@ public class ProblemsPanel extends JPanel {
             return;
         }
         lineNavigator.accept(model.findingAt(table.convertRowIndexToModel(row)).lineIndex());
+    }
+
+    /** Applies the palette. Called on construction and whenever it changes. */
+    void applyTheme() {
+        setBackground(Theme.WINDOW_BACKGROUND);
+        summary.setForeground(Theme.WINDOW_FOREGROUND);
+        table.setBackground(Theme.isDark() ? Theme.EDITOR_BACKGROUND : java.awt.Color.WHITE);
+        table.setForeground(Theme.WINDOW_FOREGROUND);
+        table.setGridColor(Theme.isDark() ? Theme.tint(Theme.WINDOW_BACKGROUND, 24)
+                : new java.awt.Color(0xD0, 0xD4, 0xDA));
+        table.getTableHeader().setBackground(Theme.isDark()
+                ? Theme.tint(Theme.WINDOW_BACKGROUND, 16) : new java.awt.Color(0xE8, 0xEA, 0xED));
+        table.getTableHeader().setForeground(Theme.WINDOW_FOREGROUND);
+        table.getTableHeader().setDefaultRenderer(new HeaderRenderer());
+        scroll.getViewport().setBackground(table.getBackground());
+        scroll.setBackground(Theme.WINDOW_BACKGROUND);
+        repaint();
+    }
+
+    /**
+     * Draws a header cell in the palette colours.
+     *
+     * <p>The Windows header renderer paints a themed light gradient of its own,
+     * so the header is drawn here instead.</p>
+     */
+    private static final class HeaderRenderer extends javax.swing.table.DefaultTableCellRenderer {
+
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public java.awt.Component getTableCellRendererComponent(JTable table, Object value,
+                                                               boolean selected, boolean focused,
+                                                               int row, int column) {
+            javax.swing.JLabel label = (javax.swing.JLabel) super.getTableCellRendererComponent(
+                    table, value, selected, focused, row, column);
+            label.setOpaque(true);
+            label.setBackground(table.getTableHeader().getBackground());
+            label.setForeground(table.getTableHeader().getForeground());
+            label.setFont(Theme.mono(12, java.awt.Font.BOLD));
+            label.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+                    javax.swing.BorderFactory.createMatteBorder(0, 0, 1, 1,
+                            Theme.isDark() ? Theme.tint(Theme.WINDOW_BACKGROUND, 40)
+                                    : new java.awt.Color(0xD0, 0xD4, 0xDA)),
+                    javax.swing.BorderFactory.createEmptyBorder(2, 6, 2, 6)));
+            return label;
+        }
     }
 
     /** Replaces the displayed findings. */
