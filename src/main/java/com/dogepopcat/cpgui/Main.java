@@ -14,6 +14,9 @@ import java.awt.Font;
  */
 public final class Main {
 
+    /** Command line switch carrying the directory the new window should use. */
+    private static final String WORKSPACE_OPTION = "--workspace";
+
     private Main() {
     }
 
@@ -22,10 +25,36 @@ public final class Main {
         System.setProperty("awt.useSystemAAFontSettings", "on");
         System.setProperty("swing.aatext", "true");
 
+        java.io.File workspace = parseWorkspace(args);
         SwingUtilities.invokeLater(() -> {
             applyLookAndFeel();
-            new MainFrame().setVisible(true);
+            new MainFrame(workspace).setVisible(true);
         });
+    }
+
+    /**
+     * Reads {@code --workspace <dir>} from the command line.
+     *
+     * <p>It is used when an elevated copy is started, so that window opens in the
+     * same directory as the one that launched it.</p>
+     *
+     * @param args the raw program arguments
+     * @return the requested directory, or {@code null} when none was given
+     */
+    private static java.io.File parseWorkspace(String[] args) {
+        if (args == null) {
+            return null;
+        }
+        for (int i = 0; i < args.length; i++) {
+            String argument = args[i];
+            if (argument.startsWith(WORKSPACE_OPTION + "=")) {
+                return new java.io.File(argument.substring(WORKSPACE_OPTION.length() + 1));
+            }
+            if (argument.equals(WORKSPACE_OPTION) && i + 1 < args.length) {
+                return new java.io.File(args[i + 1]);
+            }
+        }
+        return null;
     }
 
     private static void applyLookAndFeel() {

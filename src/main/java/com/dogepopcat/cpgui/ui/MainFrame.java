@@ -156,7 +156,18 @@ public class MainFrame extends JFrame {
     private final Action aboutAction = action("About", null, null, e -> showAbout());
 
     public MainFrame() {
+        this(null);
+    }
+
+    /**
+     * @param requestedWorkspace directory this window should start in, or
+     *                           {@code null} to choose a safe default
+     */
+    public MainFrame(File requestedWorkspace) {
         super(AppInfo.title());
+        if (requestedWorkspace != null && requestedWorkspace.isDirectory()) {
+            workspace = requestedWorkspace;
+        }
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         setMinimumSize(new Dimension(760, 500));
 
@@ -1046,10 +1057,10 @@ public class MainFrame extends JFrame {
             SwingUtilities.invokeLater(() -> {
                 elevated = result;
                 statusBar.setElevated(result);
-                adminAction.setEnabled(!result);
+                toolBar.setElevated(result);
                 adminAction.putValue(Action.SHORT_DESCRIPTION, result
-                        ? "Already running with administrator rights"
-                        : "Restart the application with administrator rights");
+                        ? "This window already has administrator rights"
+                        : "Open a second window with administrator rights");
             });
         }, "cpgui-elevation");
         thread.setDaemon(true);
@@ -1084,47 +1095,47 @@ public class MainFrame extends JFrame {
     // --- administrator mode -------------------------------------------------
 
     /**
-     * Relaunches the application with administrator rights.
+     * Opens a second, elevated window without disturbing this one.
      *
-     * <p>Windows has no way to raise the integrity level of a running process,
-     * so a new elevated copy is started through the {@code runas} verb and this
-     * one exits. Open tabs live in memory only, so unsaved work is offered for
-     * saving first and the user is told that tabs will not be carried over.</p>
+     * <p>Windows cannot raise the integrity level of a running process, so a new
+     * one is started through the {@code runas} verb. The original window is left
+     * open: closing it was needlessly destructive and made comparing the two
+     * impossible. The new window inherits the current working directory.</p>
      */
     public void requestAdministratorMode() {
         if (elevated) {
             JOptionPane.showMessageDialog(this,
-                    "This window is already running with administrator rights.",
+                    "This window is already running with administrator rights.\n\n"
+                            + "The elevated window is the one with the highlighted "
+                            + "Administrator button.",
                     "Administrator mode", JOptionPane.INFORMATION_MESSAGE);
             return;
-        }
-        for (EditorTab tab : editorTabs.tabs()) {
-            if (!confirmDiscard(tab)) {
-                return;
-            }
         }
 
         List<String> command = com.dogepopcat.cpgui.util.CommandLine.currentProcess();
         if (command.size() < 2) {
-            console.appendError("Could not work out how this program was started, so it cannot "
-                    + "be restarted elevated." + System.lineSeparator());
+            console.appendError("Could not work out how this program was started, so an "
+                    + "elevated copy cannot be started." + System.lineSeparator());
             statusBar.setMessage("Administrator restart unavailable");
             return;
         }
 
         int choice = JOptionPane.showConfirmDialog(this,
-                "Windows will ask for permission to start an elevated copy.\n\n"
-                        + "Open tabs are not carried over. This window closes once the "
-                        + "elevated copy has started.\n\nContinue?",
-                "Restart as administrator", JOptionPane.OK_CANCEL_OPTION,
+                "Windows will ask for permission to open a second window with "
+                        + "administrator rights.\n\n"
+                        + "This window stays open. The elevated window starts in "
+                        + workspace.getAbsolutePath() + " and its Administrator button "
+                        + "is highlighted.\n\nContinue?",
+                "Open an elevated window", JOptionPane.OK_CANCEL_OPTION,
                 JOptionPane.QUESTION_MESSAGE);
         if (choice != JOptionPane.OK_OPTION) {
-            statusBar.setMessage("Administrator restart cancelled");
+            statusBar.setMessage("Administrator window cancelled");
             return;
         }
 
         String executable = command.get(0);
-        String arguments = String.join(" ", command.subList(1, command.size()));
+        String arguments = String.join(" ", command.subList(1, command.size()))
+                + " --workspace \"" + workspace.getAbsolutePath() + "\"";
         ProcessBuilder builder = new ProcessBuilder("powershell.exe", "-NoProfile",
                 "-NonInteractive", "-Command",
                 "Start-Process -FilePath $env:CPGUI_ELEVATE_EXE"
@@ -1140,11 +1151,11 @@ public class MainFrame extends JFrame {
                     com.dogepopcat.cpgui.shell.ConsoleCharset.get());
             int exit = process.waitFor();
             if (exit != 0) {
-                console.appendError("Administrator restart failed: "
+                console.appendError("The elevated window could not be started: "
                         + output.strip() + System.lineSeparator());
-                statusBar.setMessage("Administrator restart was refused");
+                statusBar.setMessage("Administrator window was refused");
                 JOptionPane.showMessageDialog(this,
-                        "The elevated copy could not be started.\n\n"
+                        "The elevated window could not be started.\n\n"
                                 + "This usually means the permission prompt was dismissed.",
                         "Administrator mode", JOptionPane.WARNING_MESSAGE);
                 return;
@@ -1153,17 +1164,15 @@ public class MainFrame extends JFrame {
             Thread.currentThread().interrupt();
             return;
         } catch (IOException e) {
-            console.appendError("Administrator restart failed: " + e.getMessage()
+            console.appendError("The elevated window could not be started: " + e.getMessage()
                     + System.lineSeparator());
-            statusBar.setMessage("Administrator restart failed");
+            statusBar.setMessage("Administrator window failed");
             return;
         }
 
-        console.appendSystem("[starting an elevated copy; closing this window]"
+        console.appendSystem("[an elevated window was started; this one keeps running]"
                 + System.lineSeparator());
-        sessions.closeAll();
-        dispose();
-        System.exit(0);
+        statusBar.setMessage("Elevated window started");
     }
 
     /**

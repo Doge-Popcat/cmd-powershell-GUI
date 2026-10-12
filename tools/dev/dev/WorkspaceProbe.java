@@ -51,6 +51,15 @@ public final class WorkspaceProbe {
     /** Moves a session with cd and checks the location bar follows it. */
     private static void liveChecks() throws Exception {
         System.out.println("live directory tracking");
+
+        // The --workspace option used by an elevated window must be honoured.
+        File requested = new File(System.getProperty("user.home"));
+        MainFrame[] requestedHolder = new MainFrame[1];
+        SwingUtilities.invokeAndWait(() -> requestedHolder[0] = new MainFrame(requested));
+        report(requested.getAbsoluteFile().equals(requestedHolder[0].workspace().getAbsoluteFile()),
+                "requested workspace is honoured",
+                requestedHolder[0].workspace().getAbsolutePath());
+
         MainFrame[] holder = new MainFrame[1];
         SwingUtilities.invokeAndWait(() -> {
             holder[0] = new MainFrame();

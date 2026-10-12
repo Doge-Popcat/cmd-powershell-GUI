@@ -39,6 +39,7 @@ public class AppToolBar extends JToolBar {
 
     private final JComboBox<ShellKind> interpreter = new JComboBox<>(ShellKind.values());
     private final int buttonWidth;
+    private JButton adminButton;
     private boolean syncing;
 
     public AppToolBar(MainFrame frame) {
@@ -59,7 +60,8 @@ public class AppToolBar extends JToolBar {
         add(button(frame.stopAction()));
         add(strut());
         add(button(frame.workspaceAction()));
-        add(button(frame.adminAction()));
+        adminButton = button(frame.adminAction());
+        add(adminButton);
         add(strut());
 
         add(Box.createHorizontalGlue());
@@ -129,6 +131,27 @@ public class AppToolBar extends JToolBar {
         } finally {
             syncing = false;
         }
+    }
+
+    /**
+     * Colours the administrator button so the current privilege level is visible
+     * at a glance rather than only in the status bar.
+     *
+     * @param elevated {@code true} when this window has administrator rights
+     */
+    public void setElevated(boolean elevated) {
+        if (adminButton == null) {
+            return;
+        }
+        adminButton.setBackground(elevated ? Theme.BUTTON_ELEVATED : Theme.BUTTON_ADMIN_AVAILABLE);
+        adminButton.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(elevated
+                        ? Theme.BUTTON_ELEVATED_BORDER : Theme.BUTTON_ADMIN_BORDER),
+                BorderFactory.createEmptyBorder(2, 6, 2, 6)));
+        adminButton.setToolTipText(elevated
+                ? "This window is running as administrator"
+                : "Open a second window with administrator rights");
+        adminButton.repaint();
     }
 
     /** @return the combo box listing the available interpreters. */

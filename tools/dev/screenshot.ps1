@@ -123,6 +123,7 @@ if ($Exe -ne "") {
     $proc = Start-Process -FilePath $Java -ArgumentList $argString -PassThru
 } else {
     $argString = '-jar "' + $Jar + '"'
+    if ($ProgramArgs -ne "") { $argString = $argString + ' ' + $ProgramArgs }
     Write-Output "launching: $Java $argString"
     $proc = Start-Process -FilePath $Java -ArgumentList $argString -PassThru
 }
