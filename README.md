@@ -44,6 +44,11 @@
 | **工作区切换** | 图形化选目录，等价于 `cd /d`，并同步到所有已开启的会话 |
 | **管理员模式** | 一键以管理员身份重启（自动处理引号、未保存提醒、UAC 被拒绝的提示） |
 | **文件操作** | 新建 / 打开 / 保存 `.cmd`、`.bat`、`.ps1`，未保存时关闭会提醒 |
+| **中文 / English** | 界面默认跟随系统语言，可在「视图 → 语言」中即时切换，无需重启；命令说明也已双语化 |
+| **函数签名提示** | 光标在命令参数区时，状态栏显示该命令的用途与可用开关 |
+| **单行命令输入** | 可在输出面板底部直接输入单条命令并回车执行，支持上下键调出历史 |
+| **字体可选** | 「视图 → 字体」可分别为编辑器与控制台选择字体、字形和字号，带实时预览 |
+| **命令拼写检查** | 输入 `exyzxo` 这类不存在的命令时给出波浪线与问题提示 |
 | **桌面应用** | 纯 JDK 实现，可用 `jpackage` 打包成免安装 `.exe`，目标机器无需安装 Java |
 
 ![IntelliSense 补全](docs/screenshot-intellisense.png)
@@ -100,6 +105,9 @@ $env:JAVA_HOME = "D:\Java\jdk-27"
 | `Ctrl+O` / `Ctrl+S` / `Ctrl+Shift+S` | 打开 / 保存 / 另存为 |
 | `Ctrl+K` | 选择工作区目录 |
 | `Ctrl+=` / `Ctrl+-` | 放大 / 缩小编辑器字号 |
+| `Ctrl+Shift+F` | 选择编辑器与控制台字体 |
+| 回车 | 在编辑器内始终换行；在输出面板底部则执行输入的命令 |
+| `↑` `↓`（输出面板） | 调出此前输入过的命令 |
 
 ## 目录结构
 
@@ -152,6 +160,12 @@ cmd-powershell-GUI/
   避开所有层的引号转义规则。
 * **布局**。`JSplitPane` 的分隔条初始位置来自两侧组件的 preferred size，
   空编辑器时会被挤到很窄，所以在窗口第一次拿到真实尺寸后显式设置一次比例。
+* **工作目录**。从快捷方式或开始菜单启动时，Windows 会把工作目录设成 `C:\Windows\System32`。
+  程序会拒绝系统目录，改为回退到用户主目录——否则「另存为」和 `cd` 的默认位置就在系统目录里。
+* **查询与运行必须区分**。读取会话当前目录也是一条命令，但它属于内部查询：
+  如果它也触发「命令完成」回调，而回调又要读取目录，就会无限递归。查询因此不发完成通知。
+* **静态初始化顺序**。翻译表由其后声明的数组构建，静态初始化按声明顺序执行，
+  结果是一旦用到补全就抛异常。声明顺序在这里是有语义的。
 
 ## 开发期验证工具
 
@@ -175,7 +189,13 @@ cmd-powershell-GUI/
 > 且 `GuiDemo` 不会自动执行示例。修改这些脚本时请保持这一点——确认弹窗一旦被接受，
 > 命令是真的会执行的。
 
-## 提交历史
+## 中文 / English
+
+界面默认跟随系统语言（中文 Windows 上即为中文），可在 **视图 → 语言** 中即时切换。
+应用自身显示的所有文字——菜单、工具栏、状态栏、问题列表、对话框、危险命令说明、
+命令与开关的帮助文字——都由 `i18n/Msg` 统一提供中英两份，缺少翻译会直接编译报错。
+
+> 说明：`cmd.exe` 与 PowerShell 自身输出的文字随 Windows 语言而定，那部分不属于本程序。
 
 一次提交只做一件最小的事，每一步都可编译、可运行：
 
@@ -194,6 +214,15 @@ cmd-powershell-GUI/
 | 11 | `feat: open, save and protect unsaved scripts` | 文件操作与编码处理 |
 | 12 | `feat: restart the application with administrator rights` | 管理员模式 |
 | 13 | `build: package as a self-contained Windows application` | jpackage 打包与文档 |
+| 14 | `fix: stop the hint from taking over the editor` | 提示只在输入命令名时出现、Enter 可换行、虚化提示 |
+| 15 | `feat: make the working directory obvious and safe` | 工作目录栏、拒绝 System32 默认值 |
+| 16 | `feat: report commands that do not exist` | 未知命令检查 |
+| 17 | `style: give the tool bar buttons an even size and a visible edge` | 工具栏等宽按钮 |
+| 18 | `feat: administrator mode opens a second window and shows its state` | 管理员模式新开窗口并按状态着色 |
+| 19 | `feat: type single commands straight into the console` | 控制台单行输入 |
+| 20 | `feat: choose the editor and console font` | 字体选择 |
+| 21 | `feat: complete Chinese and English interface` | 双语界面 |
+| 22 | `feat: translate the command catalogue as well` | 命令说明双语化 |
 
 ## 贡献与提交规范
 
