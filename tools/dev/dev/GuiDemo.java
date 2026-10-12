@@ -60,6 +60,16 @@ public final class GuiDemo {
             "shutdown /a",
             "echo still fine");
 
+    /** Illustrative only: a mistyped command among correct ones. */
+    static final String TYPO_SCRIPT = String.join("\r\n",
+            "REM === unknown command demo ===",
+            "echo starting",
+            "dir /b",
+            "exyzxo /b",
+            "Get-NonexistentThing",
+            "mkdir \"D:\\scratch\\demo\\output\"",
+            "echo finished");
+
     private GuiDemo() {
     }
 
@@ -72,7 +82,10 @@ public final class GuiDemo {
         boolean list = mode.equals("list");
         boolean path = mode.equals("path");
         boolean hint = mode.equals("hint");
-        String script = powershell ? PS_SCRIPT : (danger || confirm) ? DANGER_SCRIPT : CMD_SCRIPT;
+        boolean typo = mode.equals("typo");
+        String script = powershell ? PS_SCRIPT
+                : typo ? TYPO_SCRIPT
+                : (danger || confirm) ? DANGER_SCRIPT : CMD_SCRIPT;
 
         String demoText = complete ? "Get-Ch"
                 : list ? "di"
@@ -89,7 +102,7 @@ public final class GuiDemo {
             EditorTab tab = frame.editorTabs().current();
             tab.setText(demoText);
             tab.textPane().setCaretPosition(tab.getText().length());
-            if (danger) {
+            if (danger || typo) {
                 tab.diagnostics().refresh();
                 frame.selectBottomTab("Problems");
             }

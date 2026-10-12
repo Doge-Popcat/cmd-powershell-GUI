@@ -248,21 +248,76 @@ public final class DangerAnalyzer {
             if (!command.executable()) {
                 continue;
             }
-            for (Rule rule : RULES) {
-                if (rule.kind() != null && rule.kind() != kind) {
-                    continue;
-                }
-                Matcher matcher = rule.pattern().matcher(command.text());
-                if (!matcher.find()) {
-                    continue;
-                }
-                findings.add(new Finding(rule.severity(), rule.id(), rule.message(), rule.advice(),
-                        command.startOffset(), command.endOffset(), command.lineIndex(),
-                        snippet(command.text())));
-                break; // one finding per command keeps the list readable
+            Finding finding = firstMatchingRule(kind, command);
+            if (finding == null) {
+                finding = unknownCommandFinding(kind, command);
+            }
+            if (finding != null) {
+                findings.add(finding);
             }
         }
         return findings;
+    }
+
+    /** Applies the danger rules, stopping at the first match per command. */
+    private static Finding firstMatchingRule(ShellKind kind, ScriptParser.Command command) {
+        for (Rule rule : RULES) {
+            if (rule.kind() != null && rule.kind() != kind) {
+                continue;
+            }
+            Matcher matcher = rule.pattern().matcher(command.text());
+            if (!matcher.find()) {
+                continue;
+            }
+            return new Finding(rule.severity(), rule.id(), rule.message(), rule.advice(),
+                    command.startOffset(), command.endOffset(), command.lineIndex(),
+                    snippet(command.text()));
+        }
+        return null;
+    }
+
+    /**
+     * Reports a command whose first word names nothing this machine can run.
+     *
+     * <p>The rules take precedence: a destructive command is worth flagging even
+     * if its name is also unfamiliar.</p>
+     */
+    private static Finding unknownCommandFinding(ShellKind kind, ScriptParser.Command command) {
+        String token = firstWord(command.text());
+        if (token == null) {
+            return null;
+        }
+        if (CommandResolver.isKnown(kind, token)) {
+            return null;
+        }
+        return new Finding(Severity.WARNING, "unknown.command",
+                "Unknown command: " + token,
+                "No such command or program was found here. Check the spelling, "
+                        + "or use the full path if it is not on PATH.",
+                command.startOffset(), command.endOffset(), command.lineIndex(),
+                snippet(command.text()));
+    }
+
+    /**
+     * @param text one command
+     * @return its first word, or {@code null} when it does not look like a plain
+     *         command name
+     */
+    private static String firstWord(String text) {
+        String stripped = text.stripLeading();
+        int end = 0;
+        while (end < stripped.length() && !Character.isWhitespace(stripped.charAt(end))) {
+            end++;
+        }
+        String token = stripped.substring(0, end);
+        if (token.contains("=") || token.startsWith("@")) {
+            // "set X=1" style assignments and "@echo" prefixes.
+            token = token.startsWith("@") ? token.substring(1) : token;
+        }
+        if (token.isBlank() || token.contains("=")) {
+            return null;
+        }
+        return token;
     }
 
     /**
