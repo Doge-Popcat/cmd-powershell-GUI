@@ -21,6 +21,17 @@ public final class Theme {
     /** Greyed inline suggestion drawn after the caret. */
     public static final Color GHOST_TEXT = new Color(0x60, 0x66, 0x70);
 
+    // --- toolbar -----------------------------------------------------------
+    public static final Color BUTTON_BACKGROUND = new Color(0xF4, 0xF5, 0xF7);
+    public static final Color BUTTON_BORDER = new Color(0xB8, 0xBD, 0xC6);
+    public static final Color BUTTON_HOVER = new Color(0xE4, 0xEC, 0xF6);
+    /** Used by the administrator button while running elevated. */
+    public static final Color BUTTON_ELEVATED = new Color(0xFF, 0xE2, 0xB8);
+    public static final Color BUTTON_ELEVATED_BORDER = new Color(0xE0, 0x93, 0x1F);
+    /** Used by the administrator button while running as a normal user. */
+    public static final Color BUTTON_ADMIN_AVAILABLE = new Color(0xE3, 0xF2, 0xE3);
+    public static final Color BUTTON_ADMIN_BORDER = new Color(0x4C, 0x9A, 0x4C);
+
     // --- gutter ------------------------------------------------------------
     public static final Color GUTTER_BACKGROUND = new Color(0x24, 0x25, 0x29);
     public static final Color GUTTER_FOREGROUND = new Color(0x6E, 0x73, 0x7A);

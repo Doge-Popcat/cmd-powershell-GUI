@@ -2,28 +2,43 @@ package com.dogepopcat.cpgui.ui;
 
 import com.dogepopcat.cpgui.shell.ShellKind;
 
+import javax.swing.Action;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JToolBar;
+import javax.swing.SwingConstants;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.FontMetrics;
+import java.awt.Insets;
 
 /**
  * The main tool bar.
  *
- * <p>Every button delegates to an {@link javax.swing.Action} owned by
+ * <p>Every button is the same size and carries a visible edge, so the bar reads
+ * as a row of equal controls instead of a ragged line of words. The width is
+ * derived from the longest label plus its keyboard hint, which keeps the buttons
+ * even without hard-coding a pixel value that a translation might overflow.</p>
+ *
+ * <p>Buttons delegate to {@link javax.swing.Action}s owned by
  * {@link MainFrame}, so the same command is reachable from the menu, the tool
- * bar and its keyboard shortcut, and the enabled state stays in sync
- * everywhere.</p>
+ * bar and its shortcut, and the enabled state stays in sync everywhere.</p>
  */
 public class AppToolBar extends JToolBar {
 
     private static final long serialVersionUID = 1L;
 
+    /** Gap between neighbouring buttons, in pixels. */
+    private static final int GAP = 4;
+    private static final int BUTTON_HEIGHT = 28;
+    private static final int MIN_BUTTON_WIDTH = 84;
+    private static final int MAX_BUTTON_WIDTH = 150;
+
     private final JComboBox<ShellKind> interpreter = new JComboBox<>(ShellKind.values());
+    private final int buttonWidth;
     private boolean syncing;
 
     public AppToolBar(MainFrame frame) {
@@ -32,27 +47,25 @@ public class AppToolBar extends JToolBar {
         setRollover(true);
         setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.tint(Theme.GUTTER_BACKGROUND, 40)),
-                BorderFactory.createEmptyBorder(3, 6, 3, 6)));
+                BorderFactory.createEmptyBorder(4, 6, 4, 6)));
+
+        buttonWidth = measureButtonWidth(frame);
 
         add(button(frame.newTabAction()));
         add(button(frame.openAction()));
         add(button(frame.saveAction()));
-        addSeparator(new Dimension(10, 0));
-
+        add(strut());
         add(button(frame.runAction()));
         add(button(frame.stopAction()));
-        addSeparator(new Dimension(10, 0));
-
+        add(strut());
         add(button(frame.workspaceAction()));
-        addSeparator(new Dimension(10, 0));
-
         add(button(frame.adminAction()));
-        addSeparator(new Dimension(10, 0));
+        add(strut());
 
         add(Box.createHorizontalGlue());
         add(new JLabel("Interpreter: "));
-        interpreter.setMaximumSize(new Dimension(150, 26));
-        interpreter.setPreferredSize(new Dimension(140, 26));
+        interpreter.setMaximumSize(new Dimension(160, BUTTON_HEIGHT));
+        interpreter.setPreferredSize(new Dimension(150, BUTTON_HEIGHT));
         interpreter.setToolTipText("Interpreter used by the active tab");
         interpreter.addActionListener(e -> {
             if (!syncing) {
@@ -62,15 +75,53 @@ public class AppToolBar extends JToolBar {
         add(interpreter);
     }
 
-    private JButton button(javax.swing.Action action) {
+    /**
+     * Works out a width that fits every button label, clamped so one unusually
+     * long label cannot stretch the whole bar.
+     */
+    private int measureButtonWidth(MainFrame frame) {
+        FontMetrics metrics = getFontMetrics(Theme.mono(12));
+        int widest = 0;
+        for (Action action : new Action[]{
+                frame.newTabAction(), frame.openAction(), frame.saveAction(),
+                frame.runAction(), frame.stopAction(), frame.workspaceAction(),
+                frame.adminAction()}) {
+            Object name = action.getValue(Action.NAME);
+            if (name != null) {
+                widest = Math.max(widest, metrics.stringWidth(name.toString()));
+            }
+        }
+        return Math.max(MIN_BUTTON_WIDTH,
+                Math.min(MAX_BUTTON_WIDTH, widest + 26));
+    }
+
+    private Component strut() {
+        return Box.createHorizontalStrut(GAP);
+    }
+
+    private JButton button(Action action) {
         JButton button = new JButton(action);
         button.setFocusable(false);
-        button.setHorizontalTextPosition(JButton.CENTER);
-        button.setVerticalTextPosition(JButton.BOTTOM);
+        button.setFont(Theme.mono(12));
+        button.setHorizontalAlignment(SwingConstants.CENTER);
+        button.setMargin(new Insets(0, 0, 0, 0));
+        button.setPreferredSize(new Dimension(buttonWidth, BUTTON_HEIGHT));
+        button.setMinimumSize(new Dimension(buttonWidth, BUTTON_HEIGHT));
+        button.setMaximumSize(new Dimension(buttonWidth, BUTTON_HEIGHT));
+        // A visible edge is what makes the buttons read as separate controls.
+        button.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Theme.BUTTON_BORDER),
+                BorderFactory.createEmptyBorder(2, 6, 2, 6)));
+        button.setBackground(Theme.BUTTON_BACKGROUND);
+        button.setOpaque(true);
         return button;
     }
 
-    /** Reflects the active tab's interpreter without firing a change event. */
+    /**
+     * Reflects the active tab's interpreter without firing a change event.
+     *
+     * @param kind the interpreter to select
+     */
     public void setInterpreter(ShellKind kind) {
         syncing = true;
         try {
@@ -83,6 +134,11 @@ public class AppToolBar extends JToolBar {
     /** @return the combo box listing the available interpreters. */
     public JComboBox<ShellKind> interpreterBox() {
         return interpreter;
+    }
+
+    /** @return the uniform width every button in this bar uses. */
+    public int buttonWidth() {
+        return buttonWidth;
     }
 
     @Override
