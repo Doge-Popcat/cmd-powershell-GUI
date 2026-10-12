@@ -1,5 +1,8 @@
 package com.dogepopcat.cpgui.completion;
 
+import com.dogepopcat.cpgui.i18n.Language;
+import com.dogepopcat.cpgui.i18n.Messages;
+
 import com.dogepopcat.cpgui.shell.ShellKind;
 
 import java.util.ArrayList;
@@ -383,26 +386,401 @@ public final class CommandCatalog {
             "-WhatIf|Shows what would happen without doing it"
     };
 
-    private static final List<CompletionItem> CMD_ITEMS = build(CMD_COMMANDS, true);
-    private static final List<CompletionItem> POWERSHELL_ITEMS =
-            build(POWERSHELL_CMDLETS, true);
-    private static final List<CompletionItem> POWERSHELL_KEYWORD_ITEMS =
-            build(POWERSHELL_KEYWORDS, false);
-    private static final List<CompletionItem> POWERSHELL_PARAMETER_ITEMS =
-            parameters(POWERSHELL_COMMON_PARAMETERS);
+    /** Items are rebuilt whenever the language changes. */
+    private static Language builtFor;
+    private static List<CompletionItem> cmdItems = List.of();
+    private static List<CompletionItem> powerShellItems = List.of();
+    private static List<CompletionItem> powerShellKeywords = List.of();
+    private static List<CompletionItem> powerShellParameters = List.of();
+    private static Map<String, List<CompletionItem>> cmdSwitches = Map.of();
 
-    /** Switches keyed by the lower case command they belong to. */
-    private static final Map<String, List<CompletionItem>> CMD_SWITCH_ITEMS = switches();
+
+    /**
+     * Chinese descriptions, keyed by the command, cmdlet, keyword, parameter or
+     * "command switch" pair they describe. Anything missing falls back to the
+     * English text above, so the catalogue can be extended safely.
+     *
+     * <p>The array is declared before the map it feeds: static initialisers run
+     * in declaration order, so the map would otherwise be built from null.</p>
+     */
+    private static final String[] CHINESE_ENTRIES = {
+        "assoc|显示或修改文件扩展名关联",
+        "attrib|显示或更改文件属性",
+        "bcdedit|编辑启动配置数据存储",
+        "call|从批处理中调用另一个批处理",
+        "cd|切换当前目录",
+        "chcp|显示或设置活动代码页",
+        "chdir|切换当前目录",
+        "chkdsk|检查磁盘并显示状态报告",
+        "chkntfs|显示或修改启动时的磁盘检查行为",
+        "cls|清除屏幕",
+        "cmd|启动新的命令解释器实例",
+        "color|设置控制台的前景色和背景色",
+        "compact|显示或更改 NTFS 文件压缩",
+        "convert|将 FAT 卷转换为 NTFS",
+        "copy|复制文件到另一个位置",
+        "date|显示或设置日期",
+        "del|删除一个或多个文件",
+        "dir|显示文件和子目录列表",
+        "diskpart|管理磁盘、分区和卷",
+        "doskey|编辑命令行并创建宏",
+        "driverquery|列出已安装的设备驱动",
+        "echo|显示消息，或打开、关闭命令回显",
+        "endlocal|结束环境变量的局部化",
+        "erase|删除一个或多个文件",
+        "exit|退出命令解释器",
+        "fc|比较两个文件并显示差异",
+        "find|在文件中搜索文本字符串",
+        "findstr|用模式在文件中搜索字符串",
+        "for|对集合中的每一项运行命令",
+        "forfiles|对文件夹中的每个文件运行命令",
+        "format|格式化磁盘以供 Windows 使用",
+        "fsutil|执行文件系统任务",
+        "ftype|显示或修改文件关联类型",
+        "getmac|返回网卡的 MAC 地址",
+        "goto|跳转到带标签的行",
+        "gpresult|显示目标对象的组策略设置",
+        "gpupdate|刷新组策略设置",
+        "icacls|显示或修改自由访问控制列表",
+        "if|在批处理中执行条件判断",
+        "ipconfig|显示 IP 配置",
+        "label|创建、更改或删除磁盘卷标",
+        "md|创建目录",
+        "mkdir|创建目录",
+        "mklink|创建符号链接或硬链接",
+        "mode|配置系统设备",
+        "more|分屏显示输出",
+        "move|移动文件，或重命名文件和目录",
+        "msiexec|安装、修改或卸载 Windows Installer 程序包",
+        "net|管理网络资源、用户、组和服务",
+        "netsh|显示或修改网络配置",
+        "openfiles|显示或断开已打开的文件和文件夹",
+        "path|显示或设置可执行文件的搜索路径",
+        "pause|暂停批处理的执行",
+        "ping|测试网络连接",
+        "popd|恢复 pushd 保存的目录",
+        "powercfg|控制电源设置和睡眠状态",
+        "print|打印文本文件",
+        "prompt|更改命令提示符",
+        "pushd|保存当前目录并切换到新目录",
+        "rd|删除目录",
+        "recover|从损坏的磁盘恢复可读信息",
+        "reg|管理注册表项和值",
+        "regedit|导入或导出注册表设置",
+        "ren|重命名文件",
+        "rename|重命名文件",
+        "replace|替换目标目录中的文件",
+        "rmdir|删除目录",
+        "robocopy|带丰富筛选和重试选项地复制文件树",
+        "route|操作网络路由表",
+        "runas|以其他用户身份运行程序",
+        "sc|管理 Windows 服务",
+        "schtasks|安排命令在指定时间运行",
+        "set|显示、设置或删除环境变量",
+        "setlocal|开始环境变量的局部化",
+        "sfc|扫描并修复受保护的系统文件",
+        "shift|移动可替换参数的位置",
+        "shutdown|关闭或重启计算机",
+        "sort|对输入排序",
+        "start|在新窗口中启动程序或命令",
+        "subst|将路径关联到盘符",
+        "systeminfo|显示计算机和操作系统配置",
+        "takeown|将文件所有权恢复给管理员",
+        "taskkill|结束一个或多个任务或进程",
+        "tasklist|显示正在运行的任务",
+        "time|显示或设置系统时间",
+        "title|设置会话的窗口标题",
+        "tracert|跟踪到目标的网络路径",
+        "tree|以图形方式显示目录结构",
+        "type|显示文本文件的内容",
+        "ver|显示 Windows 版本",
+        "verify|设置是否校验文件写入正确",
+        "vol|显示磁盘卷标和序列号",
+        "where|按搜索模式定位文件",
+        "whoami|显示当前用户和组信息",
+        "wmic|从命令行运行 WMI 查询",
+        "xcopy|复制文件和目录树",
+
+        "Add-Content|向文件追加内容",
+        "Add-LocalGroupMember|向本地组添加成员",
+        "Add-Member|向 PowerShell 对象添加成员",
+        "Add-Type|向会话添加 .NET 类型",
+        "Clear-Content|清空文件内容但保留文件",
+        "Clear-Disk|擦除磁盘并移除分区信息",
+        "Clear-Host|清除控制台屏幕",
+        "Clear-Variable|清除变量的值",
+        "Compare-Object|比较两组对象",
+        "Compress-Archive|将文件压缩为归档",
+        "ConvertFrom-Csv|将 CSV 输入转换为对象",
+        "ConvertFrom-Json|将 JSON 字符串转换为对象",
+        "ConvertFrom-SecureString|将安全字符串转换为加密字符串",
+        "Convert-Path|将路径转换为提供程序路径",
+        "ConvertTo-Csv|将对象转换为 CSV 文本",
+        "ConvertTo-Html|将对象转换为 HTML",
+        "ConvertTo-Json|将对象转换为 JSON 字符串",
+        "ConvertTo-SecureString|将明文转换为安全字符串",
+        "Copy-Item|将项复制到另一个位置",
+        "Disable-ComputerRestore|关闭指定驱动器上的系统还原",
+        "Enable-PSRemoting|配置本机以接收远程命令",
+        "Expand-Archive|从压缩归档中提取文件",
+        "Export-Clixml|将对象序列化为 XML 文件",
+        "Export-Csv|将对象转换为 CSV 并写入文件",
+        "ForEach-Object|对管道中的每个对象执行操作",
+        "Format-List|以属性列表格式输出",
+        "Format-Table|以表格格式输出",
+        "Format-Wide|以宽列表格式输出单个属性",
+        "Get-Acl|获取资源的安全描述符",
+        "Get-Alias|获取当前会话中的别名",
+        "Get-ChildItem|获取指定位置中的项",
+        "Get-CimInstance|获取计算机上的 CIM 实例",
+        "Get-Clipboard|获取剪贴板内容",
+        "Get-Command|获取命令的相关信息",
+        "Get-ComputerInfo|获取汇总的计算机信息",
+        "Get-Content|获取文件的内容",
+        "Get-Credential|提示输入凭据",
+        "Get-Date|获取当前日期和时间",
+        "Get-Disk|获取计算机可见的磁盘",
+        "Get-EventLog|从事件日志中获取事件",
+        "Get-FileHash|计算文件的哈希值",
+        "Get-Help|显示命令的帮助信息",
+        "Get-History|获取会话的命令历史",
+        "Get-Item|获取指定位置中的项",
+        "Get-ItemProperty|获取项的属性",
+        "Get-Job|获取会话中的后台作业",
+        "Get-Location|获取当前位置",
+        "Get-Member|获取对象的成员",
+        "Get-Module|列出会话中的模块",
+        "Get-Process|获取正在运行的进程",
+        "Get-PSDrive|获取提供程序公开的驱动器",
+        "Get-Random|获取随机数或随机选择",
+        "Get-Service|获取计算机上的服务",
+        "Get-Variable|获取会话中的变量",
+        "Get-Volume|获取计算机上的卷",
+        "Get-WmiObject|获取 WMI 对象",
+        "Group-Object|按共享属性对对象分组",
+        "Import-Clixml|导入 CLIXML 文件并创建对象",
+        "Import-Csv|将 CSV 项转换为对象",
+        "Import-Module|向会话添加模块",
+        "Invoke-CimMethod|调用 CIM 方法",
+        "Invoke-Command|在本地或远程运行命令",
+        "Invoke-Expression|将字符串作为命令运行",
+        "Invoke-Item|对项执行默认操作",
+        "Invoke-RestMethod|发送 HTTP 请求并解析响应",
+        "Invoke-WebRequest|发送 HTTP 请求",
+        "Join-Path|合并路径和子路径",
+        "Measure-Command|测量命令的执行时间",
+        "Measure-Object|测量对象的数值属性",
+        "Move-Item|移动项",
+        "New-Item|创建新项",
+        "New-ItemProperty|为项创建属性",
+        "New-LocalUser|创建本地用户账户",
+        "New-Object|创建 .NET 类型的实例",
+        "New-PSDrive|创建临时 PowerShell 驱动器",
+        "New-Partition|在磁盘上创建分区",
+        "New-Service|创建 Windows 服务",
+        "New-Variable|创建变量",
+        "Out-File|将输出发送到文件",
+        "Out-GridView|将输出发送到交互式表格",
+        "Out-Host|将输出发送到控制台",
+        "Out-Null|丢弃输出",
+        "Out-String|将输入转换为字符串",
+        "Pop-Location|返回最近保存的位置",
+        "Push-Location|保存当前位置并切换到新位置",
+        "Read-Host|从控制台读取一行输入",
+        "Receive-Job|获取后台作业的结果",
+        "Register-ObjectEvent|订阅 .NET 对象的事件",
+        "Remove-Item|删除项",
+        "Remove-ItemProperty|删除项的属性",
+        "Remove-Job|删除后台作业",
+        "Remove-Module|从会话中移除模块",
+        "Remove-PSDrive|删除临时 PowerShell 驱动器",
+        "Remove-Variable|删除变量",
+        "Rename-Item|重命名项",
+        "Resolve-Path|解析通配符路径",
+        "Restart-Computer|重启操作系统",
+        "Restart-Service|停止并重新启动服务",
+        "Select-Object|选择属性或指定数量的对象",
+        "Select-String|在字符串和文件中查找文本",
+        "Set-Acl|将安全描述符应用到资源",
+        "Set-Alias|创建或更改别名",
+        "Set-Clipboard|设置剪贴板内容",
+        "Set-Content|将内容写入文件",
+        "Set-Date|更改系统日期和时间",
+        "Set-ExecutionPolicy|更改脚本执行策略",
+        "Set-Item|更改项的值",
+        "Set-ItemProperty|更改属性的值",
+        "Set-Location|更改当前位置",
+        "Set-Service|更改服务的属性",
+        "Set-Variable|更改变量的值",
+        "Sort-Object|按属性值对对象排序",
+        "Split-Path|返回路径的一部分",
+        "Start-BitsTransfer|在后台传输文件",
+        "Start-Job|启动后台作业",
+        "Start-Process|在本地计算机上启动进程",
+        "Start-Service|启动已停止的服务",
+        "Start-Sleep|暂停一段时间",
+        "Start-Transcript|将会话记录到文件",
+        "Stop-Computer|关闭计算机",
+        "Stop-Job|停止后台作业",
+        "Stop-Process|停止正在运行的进程",
+        "Stop-Service|停止正在运行的服务",
+        "Tee-Object|保存输出并继续沿管道传递",
+        "Test-Connection|向主机发送 ICMP 回显请求",
+        "Test-NetConnection|诊断网络连接",
+        "Test-Path|判断路径是否存在",
+        "Unblock-File|移除文件的下载标记",
+        "Unregister-Event|取消事件订阅",
+        "Wait-Job|等待后台作业完成",
+        "Wait-Process|等待进程停止",
+        "Where-Object|按条件筛选对象",
+        "Write-Debug|向调试流写入消息",
+        "Write-Error|向错误流写入消息",
+        "Write-Host|直接向控制台写入输出",
+        "Write-Output|沿管道发送对象",
+        "Write-Progress|显示进度条",
+        "Write-Verbose|向详细流写入消息",
+        "Write-Warning|写入警告消息",
+
+        "if|条件为真时执行代码块",
+        "else|上一个条件为假时执行代码块",
+        "elseif|上一个条件不成立时再测试一个条件",
+        "switch|按匹配值选择要执行的代码块",
+        "foreach|遍历集合",
+        "for|计数循环",
+        "while|条件为真时循环",
+        "do|至少执行一次的循环",
+        "until|循环直到条件成立",
+        "function|声明函数",
+        "filter|声明管道筛选器",
+        "param|声明脚本或函数的参数",
+        "return|从函数或脚本返回",
+        "break|退出当前循环或 switch",
+        "continue|跳到下一次迭代",
+        "try|开始一个可以捕获错误的代码块",
+        "catch|处理 try 代码块中引发的错误",
+        "finally|无论结果如何都在 try 和 catch 之后运行",
+        "throw|引发终止性错误",
+        "trap|为某个作用域声明错误处理程序",
+        "class|声明 PowerShell 类",
+        "enum|声明枚举",
+        "using|导入命名空间或模块",
+        "in|foreach 用它命名迭代变量",
+
+        "-Confirm|执行命令前先请求确认",
+        "-Debug|显示程序员级的调试消息",
+        "-ErrorAction|指定出现非终止错误时的处理方式",
+        "-ErrorVariable|将错误记录保存到变量",
+        "-InformationAction|指定信息消息的处理方式",
+        "-OutBuffer|在向下传递之前收集的对象数量",
+        "-OutVariable|将输出对象保存到变量",
+        "-PipelineVariable|将当前管道对象保存到变量",
+        "-Verbose|显示详细的活动消息",
+        "-WarningAction|指定警告消息的处理方式",
+        "-WarningVariable|将警告消息保存到变量",
+        "-WhatIf|显示将要发生什么而不实际执行",
+
+        "dir /a|显示具有指定属性的文件",
+        "dir /b|使用简洁格式，不显示标题和摘要",
+        "dir /o|按指定顺序列出文件",
+        "dir /s|递归到子目录",
+        "dir /p|每屏之后暂停",
+        "dir /w|使用宽列表格式",
+        "dir /t|选择要显示的时间戳",
+        "copy /y|不提示覆盖确认",
+        "copy /v|校验新文件是否写入正确",
+        "copy /b|将文件视为二进制文件",
+        "xcopy /s|复制目录和子目录",
+        "xcopy /e|同时复制空目录",
+        "xcopy /i|假定目标是目录",
+        "xcopy /y|不提示覆盖确认",
+        "xcopy /h|复制隐藏文件和系统文件",
+        "robocopy /mir|镜像整个目录树",
+        "robocopy /e|复制子目录，包括空目录",
+        "robocopy /z|可重启模式",
+        "robocopy /xo|排除较旧的文件",
+        "del /f|强制删除只读文件",
+        "del /s|从所有子目录中删除",
+        "del /q|安静模式，不请求确认",
+        "del /p|删除每个文件前提示",
+        "rd /s|删除该目录及其中的全部内容",
+        "rd /q|安静模式，不请求确认",
+        "rmdir /s|删除该目录及其中的全部内容",
+        "rmdir /q|安静模式，不请求确认",
+        "findstr /i|不区分大小写地搜索",
+        "findstr /s|搜索当前目录及子目录",
+        "findstr /n|打印每个匹配项所在的行号",
+        "findstr /v|打印不包含匹配项的行",
+        "findstr /r|将搜索字符串作为正则表达式",
+        "taskkill /f|强制终止进程",
+        "taskkill /im|按映像名称匹配",
+        "taskkill /pid|按进程 ID 匹配",
+        "taskkill /t|终止该进程及其子进程",
+        "icacls /grant|向用户授予权限",
+        "icacls /remove|移除用户的权限",
+        "icacls /t|将更改应用到所有匹配的文件",
+        "takeown /f|指定目标文件或目录",
+        "takeown /r|递归到子目录",
+        "sc query|查询服务的状态",
+        "sc start|启动服务",
+        "sc stop|停止服务",
+        "sc config|更改服务的配置",
+        "sc delete|删除服务",
+        "reg query|读取注册表项和值",
+        "reg add|添加注册表项或值",
+        "reg delete|删除注册表项或值",
+        "reg export|将注册表子树导出到文件",
+        "reg import|导入注册表文件",
+        "net user|管理用户账户",
+        "net localgroup|管理本地组",
+        "net share|管理共享文件夹",
+        "net start|启动服务",
+        "net stop|停止服务",
+        "net use|连接或断开共享资源",
+        "shutdown /r|重启计算机",
+        "shutdown /s|关闭计算机",
+        "shutdown /t|设置在关机前的等待秒数",
+        "shutdown /a|中止已计划的关机",
+        "shutdown /f|强制关闭正在运行的程序",
+        "chkdsk /f|修复磁盘上的错误",
+        "chkdsk /r|定位坏扇区并恢复可读信息",
+        "ping /t|持续 ping 直到停止",
+        "ping /n|发送的回显请求数量",
+        "ping /4|强制使用 IPv4",
+        "ping /6|强制使用 IPv6",
+        "ipconfig /all|显示所有适配器的完整配置",
+        "ipconfig /flushdns|刷新 DNS 解析缓存",
+        "ipconfig /release|释放当前的 DHCP 租约",
+        "ipconfig /renew|续订 DHCP 租约",
+        "mklink /d|创建目录符号链接",
+        "mklink /h|创建硬链接",
+        "mklink /j|创建目录联接",
+        "schtasks /create|创建计划任务",
+        "schtasks /query|列出计划任务",
+        "schtasks /delete|删除计划任务",
+        "schtasks /run|立即运行计划任务"
+    };
+
+    private static final Map<String, String> CHINESE = chineseDescriptions();
+
+    private static Map<String, String> chineseDescriptions() {
+        Map<String, String> map = new HashMap<>();
+        for (String entry : CHINESE_ENTRIES) {
+            int bar = entry.indexOf('|');
+            map.put(entry.substring(0, bar), entry.substring(bar + 1));
+        }
+        return map;
+    }
 
     private CommandCatalog() {
     }
 
-    private static List<CompletionItem> build(String[] entries, boolean command) {
+    private static List<CompletionItem> build(String[] entries, boolean command,
+                                              Language language) {
         List<CompletionItem> items = new ArrayList<>(entries.length);
         for (String entry : entries) {
             int bar = entry.indexOf('|');
             String name = entry.substring(0, bar);
-            String description = entry.substring(bar + 1);
+            String description = describe(name, entry.substring(bar + 1), language);
             items.add(command
                     ? CompletionItem.command(name, description)
                     : CompletionItem.keyword(name, description));
@@ -410,41 +788,71 @@ public final class CommandCatalog {
         return List.copyOf(items);
     }
 
-    private static List<CompletionItem> parameters(String[] entries) {
+    private static List<CompletionItem> parameters(String[] entries, Language language) {
         List<CompletionItem> items = new ArrayList<>(entries.length);
         for (String entry : entries) {
             int bar = entry.indexOf('|');
-            items.add(CompletionItem.parameter(entry.substring(0, bar),
-                    entry.substring(bar + 1)));
+            String name = entry.substring(0, bar);
+            items.add(CompletionItem.parameter(name, describe(name, entry.substring(bar + 1),
+                    language)));
         }
         return List.copyOf(items);
     }
 
-    private static Map<String, List<CompletionItem>> switches() {
+    private static Map<String, List<CompletionItem>> switches(Language language) {
         Map<String, List<CompletionItem>> map = new HashMap<>();
         for (String entry : CMD_SWITCHES) {
             String[] parts = entry.split("\\|", 3);
             map.computeIfAbsent(parts[0].toLowerCase(Locale.ROOT), key -> new ArrayList<>())
-                    .add(CompletionItem.parameter(parts[1], parts[2]));
+                    .add(CompletionItem.parameter(parts[1],
+                            describe(parts[0] + " " + parts[1], parts[2], language)));
         }
         return map;
     }
 
+    /**
+     * @return the description in the requested language, falling back to the
+     *         English one when no translation has been recorded yet
+     */
+    private static String describe(String name, String english, Language language) {
+        if (language != Language.CHINESE) {
+            return english;
+        }
+        String translated = CHINESE.get(name);
+        return translated == null ? english : translated;
+    }
+
+    /** Rebuilds the catalogue when the language has changed since last time. */
+    private static synchronized void ensureBuilt() {
+        Language language = Messages.language();
+        if (language == builtFor) {
+            return;
+        }
+        cmdItems = build(CMD_COMMANDS, true, language);
+        powerShellItems = build(POWERSHELL_CMDLETS, true, language);
+        powerShellKeywords = build(POWERSHELL_KEYWORDS, false, language);
+        powerShellParameters = parameters(POWERSHELL_COMMON_PARAMETERS, language);
+        cmdSwitches = switches(language);
+        builtFor = language;
+    }
+
     /** @return every command style completion available for an interpreter. */
     public static List<CompletionItem> commands(ShellKind kind) {
+        ensureBuilt();
         if (kind == ShellKind.CMD) {
-            return CMD_ITEMS;
+            return cmdItems;
         }
         List<CompletionItem> combined = new ArrayList<>(
-                POWERSHELL_ITEMS.size() + POWERSHELL_KEYWORD_ITEMS.size());
-        combined.addAll(POWERSHELL_ITEMS);
-        combined.addAll(POWERSHELL_KEYWORD_ITEMS);
+                powerShellItems.size() + powerShellKeywords.size());
+        combined.addAll(powerShellItems);
+        combined.addAll(powerShellKeywords);
         return combined;
     }
 
     /** @return the parameters offered after a cmdlet name. */
     public static List<CompletionItem> commonParameters(ShellKind kind) {
-        return kind == ShellKind.POWERSHELL ? POWERSHELL_PARAMETER_ITEMS : List.of();
+        ensureBuilt();
+        return kind == ShellKind.POWERSHELL ? powerShellParameters : List.of();
     }
 
     /**
@@ -452,10 +860,11 @@ public final class CommandCatalog {
      * @return the switches that command understands, possibly empty
      */
     public static List<CompletionItem> switchesFor(ShellKind kind, String command) {
+        ensureBuilt();
         if (kind != ShellKind.CMD || command == null) {
             return List.of();
         }
-        List<CompletionItem> items = CMD_SWITCH_ITEMS.get(command.toLowerCase(Locale.ROOT));
+        List<CompletionItem> items = cmdSwitches.get(command.toLowerCase(Locale.ROOT));
         return items == null ? List.of() : items;
     }
 }
