@@ -177,6 +177,15 @@ public class MainFrame extends JFrame {
         bottomTabs.addTab("Problems", problems);
         bottomTabs.addTab("Output", console);
         bottomTabs.setBorder(BorderFactory.createEmptyBorder());
+        // A command typed at the console prompt runs in the active tab.
+        console.setInputHandler(command -> {
+            EditorTab target = editorTabs.current();
+            if (target == null) {
+                return;
+            }
+            execute(target, command);
+            console.setPrompt(promptName(target.shellKind()) + ">");
+        });
 
         splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, editorTabs, bottomTabs);
         splitPane.setResizeWeight(EDITOR_SHARE);
@@ -663,6 +672,7 @@ public class MainFrame extends JFrame {
         }
         statusBar.setShell(tab.shellKind());
         toolBar.setInterpreter(tab.shellKind());
+        console.setPrompt(promptName(tab.shellKind()) + ">");
         problems.setFindings(tab.diagnostics().findings());
         refreshLiveDirectory(tab);
         int[] pos = tab.caretLineColumn();
@@ -1024,6 +1034,7 @@ public class MainFrame extends JFrame {
     /** Writes the script to the console prefixed like an interactive prompt. */
     private void echoScript(EditorTab tab, String script) {
         String prompt = promptName(tab.shellKind()) + ">";
+        console.startBlock();
         StringBuilder text = new StringBuilder();
         for (String line : script.split("\\R", -1)) {
             if (!line.isBlank()) {

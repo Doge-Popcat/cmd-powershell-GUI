@@ -228,12 +228,7 @@ public final class ShellSession implements AutoCloseable {
             captureBuffer = null;
             pendingMarker = null;
         }
-        if (capture != null) {
-            capture.complete(captured);
-        }
-        if (future == null) {
-            return;
-        }
+
         boolean success = true;
         int code = 0;
         if (payload.indexOf('|') >= 0) {
@@ -245,8 +240,19 @@ public final class ShellSession implements AutoCloseable {
             code = parseInt(payload);
             success = code == 0;
         }
-        listener.onFinished(code, success);
-        future.complete(code);
+
+        if (capture != null) {
+            capture.complete(captured);
+        }
+        if (future != null) {
+            future.complete(code);
+        }
+        // A query is bookkeeping rather than something the user asked to run, so
+        // it must not raise a finish notification. Doing so would let a caller
+        // that queries on finish recurse for ever.
+        if (capture == null) {
+            listener.onFinished(code, success);
+        }
     }
 
     private static int parseInt(String value) {

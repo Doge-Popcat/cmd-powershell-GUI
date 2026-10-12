@@ -1,10 +1,15 @@
 package com.dogepopcat.cpgui.ui;
 
+import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
+import javax.swing.JTextField;
 import javax.swing.JTextPane;
+import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.text.BadLocationException;
@@ -39,6 +44,13 @@ public class ConsolePane extends JPanel {
     private final JScrollPane scroll;
     private final JScrollBar verticalBar;
 
+    private final JTextField input = new JTextField();
+    private final JLabel prompt = new JLabel("CMD>");
+    private final List<String> history = new ArrayList<>();
+
+    private java.util.function.Consumer<String> inputHandler = command -> { };
+    private int historyIndex;
+
     private record Segment(String text, Color color) {
     }
 
@@ -60,8 +72,116 @@ public class ConsolePane extends JPanel {
         this.scroll = scroll;
         this.verticalBar = scroll.getVerticalScrollBar();
 
+        add(createInputRow(), BorderLayout.SOUTH);
+
         flushTimer = new Timer(FLUSH_DELAY_MS, e -> flush());
         flushTimer.setRepeats(false);
+    }
+
+    /**
+     * Builds the single line prompt at the bottom of the console.
+     *
+     * <p>Being able to type a one-off command here saves reaching for the mouse
+     * and the Run button every time, which is how a console is normally used.</p>
+     */
+    private JPanel createInputRow() {
+        JPanel row = new JPanel(new BorderLayout(6, 0));
+        row.setBackground(Theme.CONSOLE_BACKGROUND);
+        row.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.tint(Theme.GUTTER_BACKGROUND, 40)),
+                BorderFactory.createEmptyBorder(4, 8, 4, 8)));
+
+        prompt.setFont(Theme.mono(13, java.awt.Font.BOLD));
+        prompt.setForeground(Theme.CONSOLE_COMMAND);
+        row.add(prompt, BorderLayout.WEST);
+
+        input.setFont(Theme.mono(13));
+        input.setBackground(Theme.CONSOLE_BACKGROUND);
+        input.setForeground(Theme.CONSOLE_FOREGROUND);
+        input.setCaretColor(Theme.CONSOLE_FOREGROUND);
+        input.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
+        input.setToolTipText("Type a command and press Enter to run it in the active tab. "
+                + "Up and Down recall earlier commands.");
+        input.addActionListener(e -> submitInput());
+        input.getInputMap(JComponent.WHEN_FOCUSED).put(
+                KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_UP, 0), "cpgui.console.prev");
+        input.getInputMap(JComponent.WHEN_FOCUSED).put(
+                KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_DOWN, 0), "cpgui.console.next");
+        input.getActionMap().put("cpgui.console.prev", new AbstractAction() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                recall(-1);
+            }
+        });
+        input.getActionMap().put("cpgui.console.next", new AbstractAction() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                recall(1);
+            }
+        });
+        row.add(input, BorderLayout.CENTER);
+        return row;
+    }
+
+    private void submitInput() {
+        String command = input.getText();
+        if (command == null || command.isBlank()) {
+            return;
+        }
+        history.add(command);
+        historyIndex = history.size();
+        input.setText("");
+        startBlock();
+        inputHandler.accept(command);
+    }
+
+    /** Moves through the entered commands, newest first. */
+    private void recall(int delta) {
+        if (history.isEmpty()) {
+            return;
+        }
+        historyIndex = Math.max(0, Math.min(history.size(), historyIndex + delta));
+        input.setText(historyIndex >= history.size() ? "" : history.get(historyIndex));
+    }
+
+    /**
+     * Registers the receiver for commands typed into the console.
+     *
+     * @param handler called with the command text
+     */
+    public void setInputHandler(java.util.function.Consumer<String> handler) {
+        this.inputHandler = handler == null ? command -> { } : handler;
+    }
+
+    /** Sets the prompt shown before the input field. */
+    public void setPrompt(String value) {
+        prompt.setText(value == null || value.isBlank() ? ">" : value);
+    }
+
+    /** Moves focus to the console input line. */
+    public void focusInput() {
+        input.requestFocusInWindow();
+    }
+
+    /** @return the console input field, exposed for tests. */
+    public JTextField inputField() {
+        return input;
+    }
+
+    /**
+     * Draws a dim rule so each run's command and output stand apart from the
+     * previous block.
+     */
+    public void startBlock() {
+        String existing = getText();
+        if (existing.isBlank()) {
+            return;
+        }
+        append("\u2500".repeat(72) + System.lineSeparator(), Theme.tint(Theme.CONSOLE_BACKGROUND, 40));
     }
 
     /** Appends text in the default output colour. Safe to call off the EDT. */

@@ -376,16 +376,12 @@ public final class CompletionController implements DocumentListener {
         autoTrigger.restart();
     }
 
-    private boolean insertedWhitespace(DocumentEvent e) {
-        try {
-            String inserted = e.getDocument().getText(e.getOffset(), e.getLength());
-            return !inserted.isEmpty() && Character.isWhitespace(inserted.charAt(0));
-        } catch (BadLocationException ex) {
+    private boolean isTriggerCharacter(DocumentEvent e) {
+        // Loading a file, pasting or undoing inserts many characters at once and
+        // must not ambush the user with a suggestion list.
+        if (e.getLength() != 1) {
             return false;
         }
-    }
-
-    private boolean isTriggerCharacter(DocumentEvent e) {
         try {
             String inserted = e.getDocument().getText(e.getOffset(), e.getLength());
             if (inserted.isEmpty()) {
@@ -396,6 +392,15 @@ public final class CompletionController implements DocumentListener {
             // variable or a path, all of which are worth suggesting.
             return Character.isLetterOrDigit(last) || last == '\\' || last == '/'
                     || last == '$' || last == '%' || last == '-' || last == '.';
+        } catch (BadLocationException ex) {
+            return false;
+        }
+    }
+
+    private boolean insertedWhitespace(DocumentEvent e) {
+        try {
+            String inserted = e.getDocument().getText(e.getOffset(), e.getLength());
+            return !inserted.isEmpty() && Character.isWhitespace(inserted.charAt(0));
         } catch (BadLocationException ex) {
             return false;
         }

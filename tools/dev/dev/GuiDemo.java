@@ -83,6 +83,7 @@ public final class GuiDemo {
         boolean path = mode.equals("path");
         boolean hint = mode.equals("hint");
         boolean typo = mode.equals("typo");
+        boolean consoleMode = mode.equals("console");
         String script = powershell ? PS_SCRIPT
                 : typo ? TYPO_SCRIPT
                 : (danger || confirm) ? DANGER_SCRIPT : CMD_SCRIPT;
@@ -114,6 +115,16 @@ public final class GuiDemo {
             if (complete || path || list) {
                 // Wait for layout so suggestions can be placed at the caret.
                 SwingUtilities.invokeLater(() -> tab.completion().trigger(false));
+            }
+            if (consoleMode) {
+                // Type at the console prompt so the screenshot shows a real run.
+                javax.swing.Timer timer = new javax.swing.Timer(700, e -> {
+                    frame.selectBottomTab("Output");
+                    frame.console().inputField().setText("echo console prompt works");
+                    frame.console().inputField().postActionEvent();
+                });
+                timer.setRepeats(false);
+                timer.start();
             }
             if (hint) {
                 // The signature now lives in the status bar; just leave the caret
