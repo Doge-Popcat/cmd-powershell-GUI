@@ -57,6 +57,8 @@ public final class Theme {
     public static Color CURRENT_LINE;
     /** Greyed inline suggestion drawn after the caret. */
     public static Color GHOST_TEXT;
+    /** Border colour for a visible edge. Darker in the light palette. */
+    public static Color LINE_LIGHT;
     /** Wash behind a line that single line mode ran successfully. */
     public static Color LINE_SUCCESS;
     /** Wash behind a line whose command failed. */
@@ -130,6 +132,10 @@ public final class Theme {
      */
     public static void apply(Mode newMode) {
         mode = newMode == null ? Mode.DARK : newMode;
+        if (mode == Mode.SYSTEM) {
+            // Re-read once per switch so a change in Windows is picked up.
+            systemLight = null;
+        }
         boolean dark = isDark();
         if (dark) {
             darkPalette();
@@ -174,7 +180,24 @@ public final class Theme {
      * to; it is read through {@code reg query} and a missing value is treated as
      * dark, which is the application default.</p>
      */
+    private static Boolean systemLight;
+
+    /**
+     * @return whether Windows is set to light app mode, read once
+     *
+     * <p>The answer is cached because it is consulted while painting, and
+     * starting a process there made switching to "follow system" visibly
+     * stutter.</p>
+     */
     private static boolean systemPrefersLight() {
+        if (systemLight == null) {
+            systemLight = readSystemPrefersLight();
+        }
+        return systemLight;
+    }
+
+    /** @return the Windows app theme preference, read from the registry. */
+    private static boolean readSystemPrefersLight() {
         Process process = null;
         try {
             process = new ProcessBuilder("reg.exe", "query",
@@ -219,6 +242,7 @@ public final class Theme {
         LINE_FAILURE = new Color(0x3E, 0x1E, 0x20);
 
         GUTTER_BACKGROUND = new Color(0x24, 0x25, 0x29);
+        LINE_LIGHT = new Color(0x4A, 0x4E, 0x52);
         GUTTER_FOREGROUND = new Color(0x6E, 0x73, 0x7A);
         GUTTER_CURRENT = new Color(0xC8, 0xCC, 0xD2);
 
@@ -229,14 +253,15 @@ public final class Theme {
         CONSOLE_INFO = new Color(0x7A, 0x86, 0x96);
         CONSOLE_SYSTEM = new Color(0xE5, 0xC0, 0x7B);
 
-        BUTTON_BACKGROUND = new Color(0x3C, 0x3F, 0x41);
-        BUTTON_BORDER = new Color(0x51, 0x55, 0x5A);
-        BUTTON_HOVER = new Color(0x4A, 0x4E, 0x52);
-        BUTTON_ELEVATED = new Color(0x5A, 0x45, 0x1E);
+        // Near black, so the bevel is what makes a button read as a button.
+        BUTTON_BACKGROUND = new Color(0x16, 0x17, 0x19);
+        BUTTON_BORDER = new Color(0x5A, 0x5E, 0x64);
+        BUTTON_HOVER = new Color(0x2E, 0x31, 0x35);
+        BUTTON_ELEVATED = new Color(0x4A, 0x38, 0x14);
         BUTTON_ELEVATED_BORDER = new Color(0xC8, 0x8A, 0x18);
-        BUTTON_ACTIVE = new Color(0x2F, 0x6B, 0x4F);
+        BUTTON_ACTIVE = new Color(0x1E, 0x5C, 0x3A);
         BUTTON_ACTIVE_TEXT = new Color(0xF0, 0xFF, 0xF4);
-        BUTTON_ADMIN_AVAILABLE = new Color(0x2C, 0x45, 0x2C);
+        BUTTON_ADMIN_AVAILABLE = new Color(0x1E, 0x3A, 0x1E);
         BUTTON_ADMIN_BORDER = new Color(0x4C, 0x9A, 0x4C);
 
         syntaxPaletteDark();
@@ -258,6 +283,7 @@ public final class Theme {
         LINE_FAILURE = new Color(0xFA, 0xE0, 0xE0);
 
         GUTTER_BACKGROUND = new Color(0xEC, 0xEE, 0xF1);
+        LINE_LIGHT = new Color(0x8A, 0x90, 0x98);
         GUTTER_FOREGROUND = new Color(0x8A, 0x90, 0x98);
         GUTTER_CURRENT = new Color(0x24, 0x2A, 0x32);
 
@@ -268,8 +294,8 @@ public final class Theme {
         CONSOLE_INFO = new Color(0x9A, 0xA4, 0xB2);
         CONSOLE_SYSTEM = new Color(0xE5, 0xC0, 0x7B);
 
-        BUTTON_BACKGROUND = new Color(0xF4, 0xF5, 0xF7);
-        BUTTON_BORDER = new Color(0xB8, 0xBD, 0xC6);
+        BUTTON_BACKGROUND = new Color(0xF7, 0xF8, 0xFA);
+        BUTTON_BORDER = new Color(0x3A, 0x3F, 0x46);
         BUTTON_HOVER = new Color(0xE4, 0xEC, 0xF6);
         BUTTON_ELEVATED = new Color(0xFF, 0xE2, 0xB8);
         BUTTON_ELEVATED_BORDER = new Color(0xE0, 0x93, 0x1F);
@@ -336,6 +362,31 @@ public final class Theme {
         Color line = dark ? new Color(0x4A, 0x4E, 0x52) : new Color(0xD0, 0xD4, 0xDA);
         Color muted = dark ? WINDOW_MUTED : new Color(0x5A, 0x60, 0x68);
 
+        // The Windows look and feel paints buttons, combo boxes, tabs and text
+        // fields from the system theme and ignores the colours set on them, which
+        // is what left white buttons in the dark palette. The basic versions
+        // honour the colours.
+        set("ButtonUI", "javax.swing.plaf.basic.BasicButtonUI");
+        set("ToggleButtonUI", "javax.swing.plaf.basic.BasicToggleButtonUI");
+        set("ComboBoxUI", "javax.swing.plaf.basic.BasicComboBoxUI");
+        set("TabbedPaneUI", "javax.swing.plaf.basic.BasicTabbedPaneUI");
+        set("TextFieldUI", "javax.swing.plaf.basic.BasicTextFieldUI");
+        set("TextAreaUI", "javax.swing.plaf.basic.BasicTextAreaUI");
+        set("TextPaneUI", "javax.swing.plaf.basic.BasicTextPaneUI");
+        set("EditorPaneUI", "javax.swing.plaf.basic.BasicEditorPaneUI");
+        set("CheckBoxUI", "javax.swing.plaf.basic.BasicCheckBoxUI");
+        set("RadioButtonUI", "javax.swing.plaf.basic.BasicRadioButtonUI");
+        set("MenuBarUI", "javax.swing.plaf.basic.BasicMenuBarUI");
+        set("MenuUI", "javax.swing.plaf.basic.BasicMenuUI");
+        set("MenuItemUI", "javax.swing.plaf.basic.BasicMenuItemUI");
+        set("PopupMenuUI", "javax.swing.plaf.basic.BasicPopupMenuUI");
+        set("OptionPaneUI", "javax.swing.plaf.basic.BasicOptionPaneUI");
+        set("ToolBarUI", "javax.swing.plaf.basic.BasicToolBarUI");
+        set("ListUI", "javax.swing.plaf.basic.BasicListUI");
+        set("TreeUI", "javax.swing.plaf.basic.BasicTreeUI");
+        set("TableUI", "javax.swing.plaf.basic.BasicTableUI");
+        set("LabelUI", "javax.swing.plaf.basic.BasicLabelUI");
+        set("PanelUI", "javax.swing.plaf.basic.BasicPanelUI");
         set("control", control);
         set("info", background);
         set("Panel.background", background);

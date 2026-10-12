@@ -230,8 +230,10 @@ public class FileExplorer extends JPanel {
                     .thenComparing(file -> file.getName().toLowerCase(java.util.Locale.ROOT)));
             for (File child : sorted) {
                 Node childNode = new Node(child, child.isDirectory());
-                if (child.isDirectory()) {
-                    // A placeholder so the handle is drawn before loading.
+                if (child.isDirectory() && hasVisibleChild(child)) {
+                    // A placeholder, but only for a folder that really holds
+                    // something; otherwise an empty folder shows a handle that
+                    // expands to nothing.
                     childNode.add(new DefaultMutableTreeNode());
                 }
                 node.add(childNode);
@@ -240,13 +242,29 @@ public class FileExplorer extends JPanel {
         model.nodeStructureChanged(node);
     }
 
+    /** @return whether a folder holds at least one entry. */
+    private static boolean hasVisibleChild(File directory) {
+        File[] children = directory.listFiles();
+        return children != null && children.length > 0;
+    }
+
     private void activateSelection() {
         File file = selectedFile();
         if (file == null) {
             return;
         }
         if (file.isDirectory()) {
-            workspaceHandler.accept(file);
+            // Folders expand and collapse on a double click, as in any tree.
+            // Making one the working directory is a menu action instead, so a
+            // stray double click cannot move the interpreter somewhere else.
+            TreePath path = tree.getSelectionPath();
+            if (path != null) {
+                if (tree.isExpanded(path)) {
+                    tree.collapsePath(path);
+                } else {
+                    tree.expandPath(path);
+                }
+            }
         } else {
             openHandler.accept(file);
         }
@@ -273,6 +291,12 @@ public class FileExplorer extends JPanel {
             }
             menu.addSeparator();
         }
+        if (selected != null) {
+            JMenuItem remove = new JMenuItem(Msg.EXPLORER_DELETE.text());
+            remove.addActionListener(a -> deleteSelected());
+            menu.add(remove);
+            menu.addSeparator();
+        }
         JMenuItem file = new JMenuItem(Msg.EXPLORER_NEW_FILE.text());
         file.addActionListener(a -> createFile());
         JMenuItem folder = new JMenuItem(Msg.EXPLORER_NEW_FOLDER.text());
@@ -292,6 +316,58 @@ public class FileExplorer extends JPanel {
             return rootDirectory;
         }
         return selected.isDirectory() ? selected : selected.getParentFile();
+    }
+
+    /** Deletes the selected entry, after confirming. */
+    private void deleteSelected() {
+        File selected = selectedFile();
+        if (selected == null || selected.equals(rootDirectory)) {
+            return;
+        }
+        int choice = JOptionPane.showConfirmDialog(this,
+                Msg.EXPLORER_CONFIRM_DELETE.format(selected.getName()),
+                Msg.EXPLORER_DELETE.text(), JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        if (choice != JOptionPane.YES_OPTION) {
+            return;
+        }
+        if (!delete(selected)) {
+            JOptionPane.showMessageDialog(this,
+                    Msg.EXPLORER_DELETE_FAILED.format(selected.getName()),
+                    Msg.EXPLORER_TITLE.text(), JOptionPane.ERROR_MESSAGE);
+        }
+        File parent = selected.getParentFile();
+        refresh();
+        if (parent != null) {
+            selectPathOf(parent);
+        }
+    }
+
+    /** Deletes a file or a whole folder, deepest entries first. */
+    private static boolean delete(File target) {
+        if (target.isDirectory()) {
+            File[] children = target.listFiles();
+            if (children != null) {
+                for (File child : children) {
+                    if (!delete(child)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return target.delete();
+    }
+
+    /** Selects a folder in the tree after a rebuild. */
+    private void selectPathOf(File directory) {
+        Node root = (Node) model.getRoot();
+        for (int i = 0; i < root.getChildCount(); i++) {
+            if (root.getChildAt(i) instanceof Node node
+                    && directory.equals(node.file())) {
+                tree.setSelectionPath(new TreePath(node.getPath()));
+                return;
+            }
+        }
     }
 
     private void createFile() {

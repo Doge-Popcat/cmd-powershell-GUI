@@ -1350,6 +1350,9 @@ public class MainFrame extends JFrame {
         this.workspace = directory;
         statusBar.setWorkspace(directory);
         locationBar.setDirectory(directory, false);
+        // The tree follows the working directory, otherwise it keeps showing the
+        // folder the window happened to start in.
+        explorer.setRootDirectory(directory);
         for (EditorTab open : editorTabs.tabs()) {
             open.completion().setBaseDirectory(directory);
         }

@@ -116,6 +116,11 @@ public class EditorTab extends JPanel {
 
     /** Re-applies the palette after a theme change. */
     void applyTheme() {
+        // Refreshing the look and feel drops the input map, so the completion
+        // keys are put back here.
+        if (completion != null) {
+            completion.installKeyBindings();
+        }
         textPane.setBackground(Theme.EDITOR_BACKGROUND);
         textPane.setForeground(Theme.EDITOR_FOREGROUND);
         textPane.setCaretColor(Theme.EDITOR_CARET);

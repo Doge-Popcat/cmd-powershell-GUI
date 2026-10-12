@@ -43,6 +43,12 @@ public final class LineStatusPainter extends LayeredHighlighter.LayerPainter {
         } catch (BadLocationException | IllegalArgumentException e) {
             return null;
         }
+        // Extend to the full width of the component, so the whole row is washed
+        // rather than just the characters on it.
+        int fullWidth = component.getWidth() - area.x;
+        if (fullWidth > area.width) {
+            area = new Rectangle(area.x, area.y, fullWidth, area.height);
+        }
         fill(g, area);
         return area;
     }

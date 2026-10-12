@@ -98,7 +98,14 @@ public final class CompletionController implements DocumentListener {
 
     // --- key bindings -------------------------------------------------------
 
-    private void installKeyBindings() {
+    /**
+     * Binds Tab to accept a suggestion, and the arrow keys to walk the list.
+     *
+     * <p>Reinstalled after a theme change, because refreshing the look and feel
+     * replaces the input and action maps; without that, Tab silently stopped
+     * completing and the inline suggestion stopped appearing.</p>
+     */
+    public void installKeyBindings() {
         InputMap input = pane().getInputMap(JComponent.WHEN_FOCUSED);
         ActionMap actions = pane().getActionMap();
 
