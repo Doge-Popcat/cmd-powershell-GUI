@@ -1,0 +1,23 @@
+# Build output
+build/
+out/
+dist/
+*.class
+*.jar
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+nbproject/
+
+# OS
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Local scratch
+*.log
+*.tmp
