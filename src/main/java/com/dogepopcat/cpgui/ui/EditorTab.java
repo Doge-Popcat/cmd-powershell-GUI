@@ -42,6 +42,7 @@ public class EditorTab extends JPanel {
     private static final long serialVersionUID = 1L;
 
     private final GhostTextPane textPane = new GhostTextPane();
+    private final JScrollPane scroll;
     private final LineNumberView gutter;
     private final UndoManager undo = new UndoManager();
     private final SyntaxHighlighter highlighter;
@@ -75,7 +76,7 @@ public class EditorTab extends JPanel {
         installUndoRedo();
         installCaretTracking();
 
-        JScrollPane scroll = new JScrollPane(textPane);
+        scroll = new JScrollPane(textPane);
         scroll.setRowHeaderView(gutter);
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.getViewport().setBackground(Theme.EDITOR_BACKGROUND);
@@ -102,6 +103,21 @@ public class EditorTab extends JPanel {
         highlighter = new SyntaxHighlighter(this);
         diagnostics = new DiagnosticsOverlay(this);
         completion = new CompletionController(this);
+        Theme.addListener(this::applyTheme);
+    }
+
+    /** Re-applies the palette after a theme change. */
+    private void applyTheme() {
+        textPane.setBackground(Theme.EDITOR_BACKGROUND);
+        textPane.setForeground(Theme.EDITOR_FOREGROUND);
+        textPane.setCaretColor(Theme.EDITOR_CARET);
+        textPane.setSelectionColor(Theme.EDITOR_SELECTION);
+        textPane.setSelectedTextColor(Theme.EDITOR_FOREGROUND);
+        scroll.getViewport().setBackground(Theme.EDITOR_BACKGROUND);
+        scroll.setBackground(Theme.EDITOR_BACKGROUND);
+        setBackground(Theme.WINDOW_BACKGROUND);
+        highlighter.restyle();
+        repaint();
     }
 
     private void installUndoRedo() {

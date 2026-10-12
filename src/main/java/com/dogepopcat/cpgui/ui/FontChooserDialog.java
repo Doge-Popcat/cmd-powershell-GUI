@@ -209,12 +209,20 @@ public final class FontChooserDialog extends JDialog {
         // Only families that actually draw letters are offered; the symbol and
         // pi fonts Windows ships would turn every command into boxes.
         for (String name : FontSupport.usableFamilies()) {
-            family.addItem(name);
+            // Fonts without Chinese are still offered, but the user is told.
+            family.addItem(FontSupport.supportsCjk(name) ? name
+                    : name + "   " + Msg.FONTS_NO_CJK.text());
         }
         family.setSelectedItem(initial.getFamily());
         if (family.getSelectedItem() == null && family.getItemCount() > 0) {
             family.setSelectedIndex(0);
         }
+    }
+
+    /** Strips the "no Chinese" marker the list appends. */
+    private static String plainFamily(String label) {
+        int marker = label.indexOf("   ");
+        return marker < 0 ? label : label.substring(0, marker);
     }
 
     /** @return the translated name of a style constant. */
@@ -261,7 +269,7 @@ public final class FontChooserDialog extends JDialog {
 
     private Font currentFont() {
         Object selected = family.getSelectedItem();
-        String name = selected == null ? Font.MONOSPACED : selected.toString();
+        String name = selected == null ? Font.MONOSPACED : plainFamily(selected.toString());
         return new Font(name, styleValue((String) style.getSelectedItem()),
                 sizeModel.getNumber().intValue());
     }

@@ -28,14 +28,24 @@ public final class FontSupport {
             "webdings 2", "cambria math", "segoe ui symbol", "segoe ui emoji",
             "segoe mdl2 assets", "segoe mdl2 assets 2", "segoe fluent icons");
 
-    /** Preferred console and editor families, best first. */
+    /** Preferred console and editor families for Latin text, best first. */
     private static final String[] PREFERRED = {
             "Consolas", "Cascadia Mono", "Cascadia Code", "Lucida Console",
             "DejaVu Sans Mono", "Courier New"};
 
+    /**
+     * Families that also draw Chinese, used when the Latin favourites cannot.
+     * New SimSun is what a Windows console uses on a Chinese installation.
+     */
+    private static final String[] PREFERRED_CJK = {
+            "NSimSun", "SimSun", "Microsoft YaHei Mono", "MingLiU", "MS Gothic", "SimHei"};
+
     /** Characters a usable code font must be able to draw. */
     private static final String LATIN_SAMPLE =
             "ABCXYZabcxyz0123456789 /\\|-_[](){}<>:;.,'\"~!@#$%^&*+=?";
+
+    /** Chinese characters the default font should also be able to draw. */
+    private static final String CJK_SAMPLE = "\u4e2d\u6587\u547d\u4ee4\u6807\u7b7e\u9875";
 
     private static String preferredFamily;
     private static List<String> usableFamilies;
@@ -44,30 +54,92 @@ public final class FontSupport {
     }
 
     /**
-     * @return the family to use when the user has not chosen one: the first
-     *         preferred family that is installed, otherwise any monospaced one
+     * @return the family to use when the user has not chosen one. A family that
+     *         can draw both Latin and Chinese is preferred, because a script may
+     *         contain either; Consolas is used when it qualifies, and New SimSun,
+     *         the Chinese Windows console font, when it does not
      */
     public static synchronized String preferredFamily() {
         if (preferredFamily != null) {
             return preferredFamily;
         }
-        List<String> installed = Arrays.asList(installedFamilies());
-        for (String candidate : PREFERRED) {
-            for (String family : installed) {
-                if (family.equalsIgnoreCase(candidate)) {
+        // Windows reports family names in the system language, so matching has to
+        // consider the English names as well: "NSimSun" is listed as "新宋体" on a
+        // Chinese installation, and Font accepts either spelling.
+        List<String> candidates = allFamilyNames();
+        preferredFamily = firstInstalled(candidates, PREFERRED, true);
+        if (preferredFamily == null) {
+            preferredFamily = firstInstalled(candidates, PREFERRED_CJK, true);
+        }
+        if (preferredFamily == null) {
+            for (String family : installedFamilies()) {
+                if (isLogicalFamily(family)) {
+                    continue;
+                }
+                if (isMonospaced(family) && isUsable(family) && supportsCjk(family)) {
                     preferredFamily = family;
-                    return preferredFamily;
+                    break;
                 }
             }
         }
-        for (String family : installed) {
-            if (isMonospaced(family) && isUsable(family)) {
-                preferredFamily = family;
-                return preferredFamily;
+        if (preferredFamily == null) {
+            // The logical font always has a Chinese fallback behind it.
+            preferredFamily = Font.MONOSPACED;
+        }
+        return preferredFamily;
+    }
+
+    /** @return the five logical families, which are not physical installations. */
+    private static boolean isLogicalFamily(String family) {
+        return family.equals(Font.DIALOG) || family.equals(Font.DIALOG_INPUT)
+                || family.equals(Font.MONOSPACED) || family.equals(Font.SANS_SERIF)
+                || family.equals(Font.SERIF);
+    }
+
+    /** @return every installed family name, in both the system and English form. */
+    private static List<String> allFamilyNames() {
+        List<String> names = new ArrayList<>();
+        for (String name : installedFamilies()) {
+            names.add(name);
+        }
+        try {
+            for (String name : GraphicsEnvironment.getLocalGraphicsEnvironment()
+                    .getAvailableFontFamilyNames(Locale.ENGLISH)) {
+                names.add(name);
+            }
+        } catch (RuntimeException ignored) {
+            // The English list is a convenience; the local one is enough.
+        }
+        return names;
+    }
+
+    /** @return the first candidate that is installed, optionally CJK capable. */
+    private static String firstInstalled(List<String> installed, String[] candidates,
+                                         boolean requireCjk) {
+        for (String candidate : candidates) {
+            for (String family : installed) {
+                if (family.equalsIgnoreCase(candidate)
+                        && (!requireCjk || supportsCjk(candidate))) {
+                    return candidate;
+                }
             }
         }
-        preferredFamily = Font.MONOSPACED;
-        return preferredFamily;
+        return null;
+    }
+
+    /**
+     * @param family the font family to test
+     * @return {@code true} when it can draw Chinese characters
+     */
+    public static boolean supportsCjk(String family) {
+        if (family == null || family.isBlank()) {
+            return false;
+        }
+        try {
+            return new Font(family, Font.PLAIN, 12).canDisplayUpTo(CJK_SAMPLE) < 0;
+        } catch (RuntimeException e) {
+            return false;
+        }
     }
 
     /** @return a font in the preferred family at the given size. */

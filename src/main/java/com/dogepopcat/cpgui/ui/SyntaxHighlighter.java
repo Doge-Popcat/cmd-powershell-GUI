@@ -38,6 +38,14 @@ public final class SyntaxHighlighter implements DocumentListener {
         this.debounce.setRepeats(false);
         buildStyles();
         tab.document().addDocumentListener(this);
+        Theme.addListener(this::restyle);
+        apply();
+    }
+
+    /** Rebuilds the colours and reapplies them after a theme change. */
+    public void restyle() {
+        styles.clear();
+        buildStyles();
         apply();
     }
 

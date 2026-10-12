@@ -66,7 +66,24 @@ public class StatusBar extends JPanel {
         add(right, BorderLayout.EAST);
 
         Messages.addListener(language -> refreshText());
+        Theme.addListener(this::applyTheme);
         refreshText();
+    }
+
+    /** Re-applies the palette after a theme change. */
+    private void applyTheme() {
+        setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.tint(Theme.GUTTER_BACKGROUND, 40)),
+                BorderFactory.createEmptyBorder(3, 8, 3, 8)));
+        setBackground(Theme.WINDOW_BACKGROUND);
+        message.setForeground(Theme.WINDOW_FOREGROUND);
+        hint.setForeground(Theme.CONSOLE_INFO);
+        workspace.setForeground(Theme.WINDOW_FOREGROUND);
+        shell.setForeground(Theme.WINDOW_FOREGROUND);
+        caret.setForeground(Theme.WINDOW_FOREGROUND);
+        setElevated(elevated);
+        refreshText();
+        repaint();
     }
 
     /** Re-applies every label after a language change. */

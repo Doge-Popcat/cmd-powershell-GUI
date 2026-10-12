@@ -44,6 +44,7 @@ public class AppToolBar extends JToolBar {
     private final int buttonWidth;
     private JButton adminButton;
     private boolean syncing;
+    private boolean elevated;
 
     public AppToolBar(MainFrame frame) {
         super("Main");
@@ -79,13 +80,46 @@ public class AppToolBar extends JToolBar {
         });
         add(interpreter);
         Messages.addListener(language -> refreshText());
+        Theme.addListener(this::applyTheme);
         refreshText();
+    }
+
+    /** Re-applies the palette to every button after a theme change. */
+    private void applyTheme() {
+        setBackground(Theme.WINDOW_BACKGROUND);
+        setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.tint(Theme.GUTTER_BACKGROUND, 40)),
+                BorderFactory.createEmptyBorder(4, 6, 4, 6)));
+        interpreterLabel.setForeground(Theme.WINDOW_FOREGROUND);
+        for (Component component : getComponents()) {
+            if (component instanceof JButton button) {
+                button.setBackground(Theme.BUTTON_BACKGROUND);
+                button.setForeground(Theme.WINDOW_FOREGROUND);
+                button.setBorder(Theme.raisedBorder());
+            }
+        }
+        setElevated(elevated);
+        repaint();
     }
 
     /** Re-applies the labels after a language change. */
     private void refreshText() {
         interpreterLabel.setText(Msg.TOOLBAR_INTERPRETER.text());
+        interpreterLabel.setForeground(Theme.WINDOW_FOREGROUND);
         interpreter.setToolTipText(Msg.TOOLBAR_INTERPRETER_TIP.text());
+        interpreter.setBackground(Theme.isDark() ? Theme.EDITOR_BACKGROUND : java.awt.Color.WHITE);
+        interpreter.setForeground(Theme.WINDOW_FOREGROUND);
+    }
+
+    /**
+     * Re-applies the button fonts. Restyling the component tree resets fonts to
+     * the look and feel default, so they have to be put back.
+     */
+    public void restyleFonts() {
+        for (Component component : getComponents()) {
+            component.setFont(Theme.mono(12));
+        }
+        interpreterLabel.setFont(Theme.mono(12));
     }
 
     /**
@@ -122,10 +156,9 @@ public class AppToolBar extends JToolBar {
         button.setMinimumSize(new Dimension(buttonWidth, BUTTON_HEIGHT));
         button.setMaximumSize(new Dimension(buttonWidth, BUTTON_HEIGHT));
         // A visible edge is what makes the buttons read as separate controls.
-        button.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(Theme.BUTTON_BORDER),
-                BorderFactory.createEmptyBorder(2, 6, 2, 6)));
+        button.setBorder(Theme.raisedBorder());
         button.setBackground(Theme.BUTTON_BACKGROUND);
+        button.setForeground(Theme.WINDOW_FOREGROUND);
         button.setOpaque(true);
         return button;
     }
@@ -151,6 +184,7 @@ public class AppToolBar extends JToolBar {
      * @param elevated {@code true} when this window has administrator rights
      */
     public void setElevated(boolean elevated) {
+        this.elevated = elevated;
         if (adminButton == null) {
             return;
         }
@@ -158,7 +192,7 @@ public class AppToolBar extends JToolBar {
         adminButton.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(elevated
                         ? Theme.BUTTON_ELEVATED_BORDER : Theme.BUTTON_ADMIN_BORDER),
-                BorderFactory.createEmptyBorder(2, 6, 2, 6)));
+                BorderFactory.createEmptyBorder(3, 8, 3, 8)));
         adminButton.setToolTipText(elevated
                 ? Msg.TIP_ADMIN_DONE.text()
                 : Msg.TIP_ADMIN.text());

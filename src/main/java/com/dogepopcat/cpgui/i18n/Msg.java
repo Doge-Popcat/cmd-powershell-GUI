@@ -22,6 +22,13 @@ public enum Msg {
     MENU_VIEW("View", "\u89c6\u56fe"),
     MENU_HELP("Help", "\u5e2e\u52a9"),
     MENU_LANGUAGE("Language", "\u8bed\u8a00"),
+    MENU_THEME("Theme", "\u4e3b\u9898"),
+    THEME_DARK("Dark", "\u6df1\u8272"),
+    THEME_LIGHT("Light", "\u6d45\u8272"),
+    THEME_SYSTEM("Follow system", "\u8ddf\u968f\u7cfb\u7edf"),
+    TIP_THEME("Choose the colour scheme", "\u9009\u62e9\u914d\u8272\u65b9\u6848"),
+    THEME_CHANGED("Theme: %s", "\u4e3b\u9898\uff1a%s"),
+    FONTS_NO_CJK("(no Chinese)", "\uff08\u65e0\u4e2d\u6587\uff09"),
 
     // --- actions -----------------------------------------------------------
     ACTION_NEW_TAB("New Tab", "\u65b0\u5efa\u6807\u7b7e\u9875"),

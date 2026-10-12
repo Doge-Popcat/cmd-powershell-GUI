@@ -80,6 +80,12 @@ public class ProblemsPanel extends JPanel {
         add(summary, BorderLayout.SOUTH);
 
         Messages.addListener(language -> refreshText());
+        Theme.addListener(() -> {
+            setBackground(Theme.WINDOW_BACKGROUND);
+            summary.setForeground(Theme.WINDOW_FOREGROUND);
+            table.setBackground(Theme.isDark() ? Theme.EDITOR_BACKGROUND : java.awt.Color.WHITE);
+            table.repaint();
+        });
         refreshText();
     }
 
@@ -111,6 +117,11 @@ public class ProblemsPanel extends JPanel {
     public void setFindings(List<Finding> findings) {
         model.setFindings(findings);
         summary.setText(summarise(findings));
+    }
+
+    /** @return the findings currently displayed. */
+    public List<Finding> findings() {
+        return model.findings();
     }
 
     private String summarise(List<Finding> findings) {

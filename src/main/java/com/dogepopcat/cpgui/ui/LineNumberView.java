@@ -38,6 +38,11 @@ final class LineNumberView extends JComponent implements DocumentListener {
         setForeground(Theme.GUTTER_FOREGROUND);
         setOpaque(true);
         text.getDocument().addDocumentListener(this);
+        Theme.addListener(() -> {
+            setBackground(Theme.GUTTER_BACKGROUND);
+            setForeground(Theme.GUTTER_FOREGROUND);
+            repaint();
+        });
     }
 
     /** Changes the gutter font so it keeps matching the editor. */

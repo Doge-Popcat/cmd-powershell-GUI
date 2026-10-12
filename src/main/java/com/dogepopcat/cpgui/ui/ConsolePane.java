@@ -126,8 +126,16 @@ public class ConsolePane extends JPanel {
         });
         row.add(input, BorderLayout.CENTER);
         Messages.addListener(language -> refreshText());
+        Theme.addListener(this::applyTheme);
         refreshText();
         return row;
+    }
+
+    /** Re-applies the palette after a theme change. */
+    private void applyTheme() {
+        setPalette(Theme.CONSOLE_BACKGROUND, Theme.CONSOLE_FOREGROUND);
+        setBackground(Theme.CONSOLE_BACKGROUND);
+        repaint();
     }
 
     /** Re-applies the localized text after a language change. */

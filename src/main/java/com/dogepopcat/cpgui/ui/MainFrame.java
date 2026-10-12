@@ -259,6 +259,7 @@ public class MainFrame extends JFrame {
                 hideAllCompletions();
             }
         });
+        Theme.addListener(this::applyTheme);
         addWindowStateListener(e -> {
             if ((e.getNewState() & java.awt.Frame.ICONIFIED) != 0) {
                 hideAllCompletions();
@@ -389,6 +390,7 @@ public class MainFrame extends JFrame {
         view.add(item(smallerFontAction));
         view.addSeparator();
         view.add(createLanguageMenu());
+        view.add(createThemeMenu());
         bar.add(view);
 
         JMenu help = menu(Msg.MENU_HELP, 'H');
@@ -422,6 +424,36 @@ public class MainFrame extends JFrame {
         }
         language.setIcon(null);
         return language;
+    }
+
+    /** Builds the theme submenu with one radio entry per palette. */
+    private JMenu createThemeMenu() {
+        JMenu theme = menu(Msg.MENU_THEME, 'T');
+        ButtonGroup group = new ButtonGroup();
+        for (Theme.Mode option : Theme.Mode.values()) {
+            JRadioButtonMenuItem entry = new JRadioButtonMenuItem(option.label());
+            entry.setSelected(Theme.mode() == option);
+            entry.addActionListener(e -> {
+                Theme.apply(option);
+                statusBar.setMessage(Msg.THEME_CHANGED.format(option.label()));
+            });
+            group.add(entry);
+            theme.add(entry);
+        }
+        return theme;
+    }
+
+    /** Re-applies the palette to the window chrome after a theme change. */
+    private void applyTheme() {
+        getContentPane().setBackground(Theme.WINDOW_BACKGROUND);
+        setBackground(Theme.WINDOW_BACKGROUND);
+        splitPane.setBackground(Theme.WINDOW_BACKGROUND);
+        editorTabs.setBackground(Theme.WINDOW_BACKGROUND);
+        bottomTabs.setBackground(Theme.WINDOW_BACKGROUND);
+        statusBar.setBackground(Theme.WINDOW_BACKGROUND);
+        // The look and feel defaults changed, so ask Swing to restyle the tree.
+        SwingUtilities.updateComponentTreeUI(this);
+        repaint();
     }
 
     /**
