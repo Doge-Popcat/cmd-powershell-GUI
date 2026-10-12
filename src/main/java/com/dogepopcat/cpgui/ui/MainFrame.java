@@ -45,6 +45,9 @@ public class MainFrame extends JFrame {
 
     private static final long serialVersionUID = 1L;
 
+    /** Share of the window height given to the editor on first layout. */
+    private static final double EDITOR_SHARE = 0.68;
+
     private final EditorTabs editorTabs = new EditorTabs();
     private final ConsolePane console = new ConsolePane();
     private final StatusBar statusBar = new StatusBar();
@@ -56,6 +59,7 @@ public class MainFrame extends JFrame {
     private File workspace = new File(System.getProperty("user.dir"));
     private AppToolBar toolBar;
     private volatile boolean elevated;
+    private boolean dividerPlaced;
 
     // --- actions -----------------------------------------------------------
 
@@ -162,10 +166,20 @@ public class MainFrame extends JFrame {
         bottomTabs.setBorder(BorderFactory.createEmptyBorder());
 
         splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, editorTabs, bottomTabs);
-        splitPane.setResizeWeight(0.68);
+        splitPane.setResizeWeight(EDITOR_SHARE);
         splitPane.setDividerSize(6);
         splitPane.setBorder(BorderFactory.createEmptyBorder());
         splitPane.setContinuousLayout(true);
+        // A split pane places its divider from the components' preferred sizes,
+        // and resizeWeight only applies to later resizes. An empty editor has a
+        // tiny preferred height, so the divider has to be placed explicitly once
+        // the window has a real size.
+        splitPane.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                placeInitialDivider();
+            }
+        });
 
         toolBar = new AppToolBar(this);
 
@@ -348,6 +362,19 @@ public class MainFrame extends JFrame {
         tab.completion().setBaseDirectory(workspace);
         SwingUtilities.invokeLater(tab.textPane()::requestFocusInWindow);
         return tab;
+    }
+
+    /**
+     * Places the editor/console divider proportionally the first time the window
+     * has a usable height, then never interferes again so the user's own
+     * position is kept.
+     */
+    private void placeInitialDivider() {
+        if (dividerPlaced || splitPane.getHeight() <= 0) {
+            return;
+        }
+        dividerPlaced = true;
+        splitPane.setDividerLocation(EDITOR_SHARE);
     }
 
     /** Moves the caret of the active tab to a zero based line. */

@@ -18,6 +18,8 @@ param(
     [string]$MainClass = "",
     [string]$ClassPath = "",
     [string]$ProgramArgs = "",
+    [string]$Exe = "",
+    [string]$WindowTitle = "Cmd/PowerShell GUI",
     [switch]$FullScreen
 )
 
@@ -60,10 +62,28 @@ public class Win32Shot {
     [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);
     [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr hWnd);
     [DllImport("user32.dll")] private static extern bool SetWindowPos(IntPtr hWnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetWindowTextW(IntPtr hWnd, System.Text.StringBuilder text, int max);
     [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
     private delegate bool EnumProc(IntPtr hWnd, IntPtr param);
     private static readonly IntPtr TOPMOST = new IntPtr(-1);
     private const uint NOMOVE_NOSIZE_SHOW = 0x0001 | 0x0002 | 0x0040;
+
+    /// Finds a visible top level window whose title starts with a prefix. Needed
+    /// for packaged launchers, which start the JVM as a child process.
+    public static IntPtr FindByTitlePrefix(string prefix) {
+        IntPtr found = IntPtr.Zero;
+        EnumWindows((h, p) => {
+            if (!IsWindowVisible(h)) { return true; }
+            System.Text.StringBuilder buffer = new System.Text.StringBuilder(512);
+            GetWindowTextW(h, buffer, buffer.Capacity);
+            if (buffer.ToString().StartsWith(prefix, StringComparison.Ordinal)) {
+                found = h;
+                return false;
+            }
+            return true;
+        }, IntPtr.Zero);
+        return found;
+    }
 
     /// Raises every visible window of a process, dialogs included, so a
     /// screenshot cannot end up showing whatever happened to be in front.
@@ -93,14 +113,19 @@ public class Win32Shot {
 
 [void][Win32Shot]::SetProcessDPIAware()
 
-if ($MainClass -ne "") {
+if ($Exe -ne "") {
+    Write-Output "launching: $Exe"
+    $proc = Start-Process -FilePath $Exe -PassThru
+} elseif ($MainClass -ne "") {
     $argString = '-cp "' + $ClassPath + '" ' + $MainClass
     if ($ProgramArgs -ne "") { $argString = $argString + ' ' + $ProgramArgs }
+    Write-Output "launching: $Java $argString"
+    $proc = Start-Process -FilePath $Java -ArgumentList $argString -PassThru
 } else {
     $argString = '-jar "' + $Jar + '"'
+    Write-Output "launching: $Java $argString"
+    $proc = Start-Process -FilePath $Java -ArgumentList $argString -PassThru
 }
-Write-Output "launching: $Java $argString"
-$proc = Start-Process -FilePath $Java -ArgumentList $argString -PassThru
 Start-Sleep -Seconds $WaitSeconds
 
 if ($proc.HasExited) { Write-Output "APP EXITED EARLY code=$($proc.ExitCode)"; exit 1 }
@@ -111,6 +136,10 @@ for ($i = 0; $i -lt 20 -and $h -eq [IntPtr]::Zero; $i++) {
     Start-Sleep -Milliseconds 500
     $proc.Refresh()
     $h = $proc.MainWindowHandle
+}
+if ($h -eq [IntPtr]::Zero) {
+    # A packaged launcher starts the JVM as a child, so look the window up by title.
+    $h = [Win32Shot]::FindByTitlePrefix($WindowTitle)
 }
 if ($h -eq [IntPtr]::Zero) { Write-Output "NO WINDOW HANDLE"; $proc.Kill(); exit 1 }
 
