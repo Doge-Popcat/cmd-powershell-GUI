@@ -162,6 +162,25 @@ public class ConsolePane extends JPanel {
         prompt.setText(value == null || value.isBlank() ? ">" : value);
     }
 
+    /**
+     * Changes the console font, applying it to the output and the input line.
+     *
+     * @param font the font to use
+     */
+    public void setConsoleFont(java.awt.Font font) {
+        if (font == null) {
+            return;
+        }
+        text.setFont(font);
+        input.setFont(font);
+        prompt.setFont(font.deriveFont(java.awt.Font.BOLD));
+    }
+
+    /** @return the font the console output is using. */
+    public java.awt.Font consoleFont() {
+        return text.getFont();
+    }
+
     /** Moves focus to the console input line. */
     public void focusInput() {
         input.requestFocusInWindow();

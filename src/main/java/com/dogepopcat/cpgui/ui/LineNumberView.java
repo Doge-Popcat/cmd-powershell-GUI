@@ -27,7 +27,7 @@ final class LineNumberView extends JComponent implements DocumentListener {
     private static final int RIGHT_PADDING = 8;
 
     private final JTextComponent text;
-    private final Font font;
+    private Font font;
     private int digits = 3;
 
     LineNumberView(JTextComponent text) {
@@ -38,6 +38,14 @@ final class LineNumberView extends JComponent implements DocumentListener {
         setForeground(Theme.GUTTER_FOREGROUND);
         setOpaque(true);
         text.getDocument().addDocumentListener(this);
+    }
+
+    /** Changes the gutter font so it keeps matching the editor. */
+    void setGutterFont(Font font) {
+        this.font = font;
+        setFont(font);
+        revalidate();
+        repaint();
     }
 
     private int lineHeight() {

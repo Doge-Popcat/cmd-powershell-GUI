@@ -62,6 +62,10 @@ public class MainFrame extends JFrame {
     private final LocationBar locationBar = new LocationBar();
     private volatile boolean elevated;
     private boolean dividerPlaced;
+    /** The font every editor tab uses; new tabs inherit it. */
+    private java.awt.Font editorFont = Theme.mono(13);
+    /** The font the console uses. */
+    private java.awt.Font consoleFont = Theme.mono(13);
 
     // --- actions -----------------------------------------------------------
 
@@ -123,6 +127,12 @@ public class MainFrame extends JFrame {
     private final Action smallerFontAction = action("Smaller Editor Font", null,
             KeyStroke.getKeyStroke(KeyEvent.VK_MINUS, InputEvent.CTRL_DOWN_MASK),
             e -> zoomEditor(-1));
+
+    private final Action fontAction = action("Fonts\u2026",
+            "Choose the font used by the editor and the console",
+            KeyStroke.getKeyStroke(KeyEvent.VK_F, InputEvent.CTRL_DOWN_MASK
+                    | InputEvent.SHIFT_DOWN_MASK),
+            e -> chooseFonts());
 
     private final Action runAction = action("Run",
             "Run the selection, or the whole script when nothing is selected (Ctrl+Enter)",
@@ -361,6 +371,7 @@ public class MainFrame extends JFrame {
         view.setMnemonic('V');
         view.add(item(clearOutputAction));
         view.addSeparator();
+        view.add(item(fontAction));
         view.add(item(largerFontAction));
         view.add(item(smallerFontAction));
         bar.add(view);
@@ -405,6 +416,8 @@ public class MainFrame extends JFrame {
             }
         });
         tab.completion().setBaseDirectory(workspace);
+        // A new tab inherits whatever font the user has chosen.
+        tab.setEditorFont(editorFont);
         tab.completion().setHintConsumer(parameterHint -> {
             if (tab == editorTabs.current()) {
                 statusBar.setHint(parameterHint == null ? null : describe(parameterHint));
@@ -700,9 +713,43 @@ public class MainFrame extends JFrame {
         withEditor(tab -> {
             java.awt.Font font = tab.textPane().getFont();
             int size = Math.max(9, Math.min(28, font.getSize() + delta));
-            tab.textPane().setFont(font.deriveFont((float) size));
+            tab.setEditorFont(font.deriveFont((float) size));
             statusBar.setMessage("Editor font " + size + "pt");
         });
+    }
+
+    /** Opens the font chooser and applies whatever the user picks. */
+    public void chooseFonts() {
+        EditorTab tab = editorTabs.current();
+        java.awt.Font current = tab != null ? tab.editorFont() : editorFont;
+        java.util.Optional<FontChooserDialog.Result> choice = FontChooserDialog.show(
+                this, FontChooserDialog.Target.EDITOR, current);
+        if (choice.isEmpty()) {
+            statusBar.setMessage("Fonts unchanged");
+            return;
+        }
+        FontChooserDialog.Result result = choice.get();
+        applyFont(result.target(), result.font());
+        statusBar.setMessage(result.target() + " font: "
+                + result.font().getFamily() + " " + result.font().getSize() + "pt");
+    }
+
+    /**
+     * Applies a font to one of the two surfaces.
+     *
+     * @param target which surface to change
+     * @param font   the font to use
+     */
+    public void applyFont(FontChooserDialog.Target target, java.awt.Font font) {
+        if (target == FontChooserDialog.Target.CONSOLE) {
+            this.consoleFont = font;
+            console.setConsoleFont(font);
+            return;
+        }
+        this.editorFont = font;
+        for (EditorTab open : editorTabs.tabs()) {
+            open.setEditorFont(font);
+        }
     }
 
     // --- execution ----------------------------------------------------------

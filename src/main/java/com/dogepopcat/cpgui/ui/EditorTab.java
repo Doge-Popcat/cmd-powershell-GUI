@@ -21,6 +21,7 @@ import javax.swing.undo.CannotRedoException;
 import javax.swing.undo.CannotUndoException;
 import javax.swing.undo.UndoManager;
 import java.awt.BorderLayout;
+import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
@@ -294,6 +295,30 @@ public class EditorTab extends JPanel {
     /** @return the IntelliSense controller driving this tab's popup. */
     public CompletionController completion() {
         return completion;
+    }
+
+    /**
+     * Changes the editor font, keeping the line number gutter in step.
+     *
+     * @param font the font to use
+     */
+    public void setEditorFont(Font font) {
+        if (font == null) {
+            return;
+        }
+        textPane.setFont(font);
+        gutter.setGutterFont(font);
+        highlighter.refresh();
+    }
+
+    /** @return the font the editor is currently using. */
+    public Font editorFont() {
+        return textPane.getFont();
+    }
+
+    /** @return the width of the line number gutter, for layout checks. */
+    public int gutterWidth() {
+        return gutter.getPreferredSize().width;
     }
 
     /** @return the tab title, prefixed with {@code *} when unsaved. */
