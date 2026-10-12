@@ -1,241 +1,183 @@
 # Cmd/PowerShell GUI
 
-> 一个面向 Windows 的 `cmd.exe` / `powershell.exe` 图形化前端 —— 既能像终端一样直接敲命令，
-> 又能像 IDE 一样编辑、检查、补全命令脚本。
-
-[![Language](https://img.shields.io/badge/language-Java-orange.svg)](#技术选型说明)
-[![UI](https://img.shields.io/badge/UI-Swing-blue.svg)](#技术选型说明)
-[![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)](#环境要求)
-[![Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen.svg)](#构建与运行)
+> 涓€涓潰鍚?Windows 鐨?`cmd.exe` / `powershell.exe` 鍥惧舰鍖栧墠绔?鈥斺€?鏃㈣兘鍍忕粓绔竴鏍风洿鎺ユ暡鍛戒护锛?> 鍙堣兘鍍?IDE 涓€鏍风紪杈戙€佹鏌ャ€佽ˉ鍏ㄥ懡浠よ剼鏈€?
+[![Language](https://img.shields.io/badge/language-Java-orange.svg)](#鎶€鏈€夊瀷璇存槑)
+[![UI](https://img.shields.io/badge/UI-Swing-blue.svg)](#鎶€鏈€夊瀷璇存槑)
+[![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)](#鐜瑕佹眰)
+[![Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen.svg)](#鏋勫缓涓庤繍琛?
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-![编辑器与危险命令检查](docs/screenshot-editor.png)
+![缂栬緫鍣ㄤ笌鍗遍櫓鍛戒护妫€鏌(docs/screenshot-editor.png)
 
 ---
 
-## 这个项目解决什么问题
-
-平时用 `cmd` 或 PowerShell，总会遇到这些麻烦：
-
-* 一次只能敲一行，想改上一条命令要按半天方向键；
-* 命令长了、复杂了，写错只能整行重来；
-* `del /f /s /q`、`Remove-Item -Recurse -Force` 这类**危险命令没有任何二次确认**；
-* 想保存一组常用命令，只能另存成 `.bat`，却没有编辑器辅助。
-
-本项目把「终端」和「代码编辑器」合二为一：你面对的是一个带标签页的代码编辑区，
-把命令当代码写（多行、注释、语法高亮、补全、错误提示），点一下 **运行** 就交给真正的
-`cmd.exe` / `powershell.exe` 执行，输出实时回显在下方控制台。
-
-## 功能一览
-
-| 能力 | 说明 |
+## 杩欎釜椤圭洰瑙ｅ喅浠€涔堥棶棰?
+骞虫椂鐢?`cmd` 鎴?PowerShell锛屾€讳細閬囧埌杩欎簺楹荤儲锛?
+* 涓€娆″彧鑳芥暡涓€琛岋紝鎯虫敼涓婁竴鏉″懡浠よ鎸夊崐澶╂柟鍚戦敭锛?* 鍛戒护闀夸簡銆佸鏉備簡锛屽啓閿欏彧鑳芥暣琛岄噸鏉ワ紱
+* `del /f /s /q`銆乣Remove-Item -Recurse -Force` 杩欑被**鍗遍櫓鍛戒护娌℃湁浠讳綍浜屾纭**锛?* 鎯充繚瀛樹竴缁勫父鐢ㄥ懡浠わ紝鍙兘鍙﹀瓨鎴?`.bat`锛屽嵈娌℃湁缂栬緫鍣ㄨ緟鍔┿€?
+鏈」鐩妸銆岀粓绔€嶅拰銆屼唬鐮佺紪杈戝櫒銆嶅悎浜屼负涓€锛氫綘闈㈠鐨勬槸涓€涓甫鏍囩椤电殑浠ｇ爜缂栬緫鍖猴紝
+鎶婂懡浠ゅ綋浠ｇ爜鍐欙紙澶氳銆佹敞閲娿€佽娉曢珮浜€佽ˉ鍏ㄣ€侀敊璇彁绀猴級锛岀偣涓€涓?**杩愯** 灏变氦缁欑湡姝ｇ殑
+`cmd.exe` / `powershell.exe` 鎵ц锛岃緭鍑哄疄鏃跺洖鏄惧湪涓嬫柟鎺у埗鍙般€?
+## 鍔熻兘涓€瑙?
+| 鑳藉姏 | 璇存槑 |
 | --- | --- |
-| **双引擎** | 原生调用 `cmd.exe` 与 `powershell.exe`，不是模拟器；工具栏下拉框随标签页切换 |
-| **常驻会话** | 每个标签页一个独立进程，`cd`、`set`、PowerShell 变量在多次运行之间保持 |
-| **多标签页** | 每个标签页独立会话；标签标题带 `*` 表示未保存；中键或 × 关闭 |
-| **单条 / 批量执行** | `Ctrl+Enter` 运行选中或整个脚本，`Ctrl+Shift+Enter` 只运行全部，`Ctrl+L` 只运行光标所在那条命令 |
-| **真实退出码** | 每次运行结束都会报告解释器给出的退出码，失败时标红 |
-| **语法高亮** | 命令、关键字、开关、参数、变量、字符串、数字、运算符、标签、注释分色显示 |
-| **IntelliSense** | 96 个 cmd 命令及其开关、163 个 PowerShell cmdlet 与关键字、环境变量、自动变量，边打边提示，`Ctrl+Space` 手动触发 |
-| **路径补全** | 输入 `build\cp` 之类的前缀时，按工作区目录列出文件和文件夹（含大小与日期） |
-| **参数提示** | 光标进入某条命令的参数区时，浮动显示该命令的用途和可用开关 |
-| **静态检查** | 40 条规则实时检查，问题列表可双击跳转到对应行 |
-| **危险命令二次确认** | 删除、格式化、关机、改权限、绕过策略等操作，运行前弹窗逐条列出并默认「取消」 |
-| **工作区切换** | 图形化选目录，等价于 `cd /d`，并同步到所有已开启的会话 |
-| **管理员模式** | 一键以管理员身份重启（自动处理引号、未保存提醒、UAC 被拒绝的提示） |
-| **文件操作** | 新建 / 打开 / 保存 `.cmd`、`.bat`、`.ps1`，未保存时关闭会提醒 |
-| **中文 / English** | 界面默认跟随系统语言，可在「视图 → 语言」中即时切换，无需重启；命令说明也已双语化 |
-| **函数签名提示** | 光标在命令参数区时，状态栏显示该命令的用途与可用开关 |
-| **单行命令输入** | 可在输出面板底部直接输入单条命令并回车执行，支持上下键调出历史 |
-| **字体可选** | 「视图 → 字体」可分别为编辑器与控制台选择字体、字形和字号，带实时预览 |
-| **命令拼写检查** | 输入 `exyzxo` 这类不存在的命令时给出波浪线与问题提示 |
-| **桌面应用** | 纯 JDK 实现，可用 `jpackage` 打包成免安装 `.exe`，目标机器无需安装 Java |
+| **鍙屽紩鎿?* | 鍘熺敓璋冪敤 `cmd.exe` 涓?`powershell.exe`锛屼笉鏄ā鎷熷櫒锛涘伐鍏锋爮涓嬫媺妗嗛殢鏍囩椤靛垏鎹?|
+| **甯搁┗浼氳瘽** | 姣忎釜鏍囩椤典竴涓嫭绔嬭繘绋嬶紝`cd`銆乣set`銆丳owerShell 鍙橀噺鍦ㄥ娆¤繍琛屼箣闂翠繚鎸?|
+| **澶氭爣绛鹃〉** | 姣忎釜鏍囩椤电嫭绔嬩細璇濓紱鏍囩鏍囬甯?`*` 琛ㄧず鏈繚瀛橈紱涓敭鎴?脳 鍏抽棴 |
+| **鍗曟潯 / 鎵归噺鎵ц** | `Ctrl+Enter` 杩愯閫変腑鎴栨暣涓剼鏈紝`Ctrl+Shift+Enter` 鍙繍琛屽叏閮紝`Ctrl+L` 鍙繍琛屽厜鏍囨墍鍦ㄩ偅鏉″懡浠?|
+| **鐪熷疄閫€鍑虹爜** | 姣忔杩愯缁撴潫閮戒細鎶ュ憡瑙ｉ噴鍣ㄧ粰鍑虹殑閫€鍑虹爜锛屽け璐ユ椂鏍囩孩 |
+| **璇硶楂樹寒** | 鍛戒护銆佸叧閿瓧銆佸紑鍏炽€佸弬鏁般€佸彉閲忋€佸瓧绗︿覆銆佹暟瀛椼€佽繍绠楃銆佹爣绛俱€佹敞閲婂垎鑹叉樉绀?|
+| **IntelliSense** | 96 涓?cmd 鍛戒护鍙婂叾寮€鍏炽€?63 涓?PowerShell cmdlet 涓庡叧閿瓧銆佺幆澧冨彉閲忋€佽嚜鍔ㄥ彉閲忥紝杈规墦杈规彁绀猴紝`Ctrl+Space` 鎵嬪姩瑙﹀彂 |
+| **璺緞琛ュ叏** | 杈撳叆 `build\cp` 涔嬬被鐨勫墠缂€鏃讹紝鎸夊伐浣滃尯鐩綍鍒楀嚭鏂囦欢鍜屾枃浠跺す锛堝惈澶у皬涓庢棩鏈燂級 |
+| **鍙傛暟鎻愮ず** | 鍏夋爣杩涘叆鏌愭潯鍛戒护鐨勫弬鏁板尯鏃讹紝娴姩鏄剧ず璇ュ懡浠ょ殑鐢ㄩ€斿拰鍙敤寮€鍏?|
+| **闈欐€佹鏌?* | 40 鏉¤鍒欏疄鏃舵鏌ワ紝闂鍒楄〃鍙弻鍑昏烦杞埌瀵瑰簲琛?|
+| **鍗遍櫓鍛戒护浜屾纭** | 鍒犻櫎銆佹牸寮忓寲銆佸叧鏈恒€佹敼鏉冮檺銆佺粫杩囩瓥鐣ョ瓑鎿嶄綔锛岃繍琛屽墠寮圭獥閫愭潯鍒楀嚭骞堕粯璁ゃ€屽彇娑堛€?|
+| **宸ヤ綔鍖哄垏鎹?* | 鍥惧舰鍖栭€夌洰褰曪紝绛変环浜?`cd /d`锛屽苟鍚屾鍒版墍鏈夊凡寮€鍚殑浼氳瘽 |
+| **绠＄悊鍛樻ā寮?* | 涓€閿互绠＄悊鍛樿韩浠介噸鍚紙鑷姩澶勭悊寮曞彿銆佹湭淇濆瓨鎻愰啋銆乁AC 琚嫆缁濈殑鎻愮ず锛?|
+| **鏂囦欢鎿嶄綔** | 鏂板缓 / 鎵撳紑 / 淇濆瓨 `.cmd`銆乣.bat`銆乣.ps1`锛屾湭淇濆瓨鏃跺叧闂細鎻愰啋 |
+| **涓枃 / English** | 鐣岄潰榛樿璺熼殢绯荤粺璇█锛屽彲鍦ㄣ€岃鍥?鈫?璇█銆嶄腑鍗虫椂鍒囨崲锛屾棤闇€閲嶅惎锛涘懡浠よ鏄庝篃宸插弻璇寲 |
+| **鍑芥暟绛惧悕鎻愮ず** | 鍏夋爣鍦ㄥ懡浠ゅ弬鏁板尯鏃讹紝鐘舵€佹爮鏄剧ず璇ュ懡浠ょ殑鐢ㄩ€斾笌鍙敤寮€鍏?|
+| **鍗曡鍛戒护杈撳叆** | 鍙湪杈撳嚭闈㈡澘搴曢儴鐩存帴杈撳叆鍗曟潯鍛戒护骞跺洖杞︽墽琛岋紝鏀寔涓婁笅閿皟鍑哄巻鍙?|
+| **瀛椾綋鍙€?* | 銆岃鍥?鈫?瀛椾綋銆嶅彲鍒嗗埆涓虹紪杈戝櫒涓庢帶鍒跺彴閫夋嫨瀛椾綋銆佸瓧褰㈠拰瀛楀彿锛屽甫瀹炴椂棰勮 |
+| **鍛戒护鎷煎啓妫€鏌?* | 杈撳叆 `exyzxo` 杩欑被涓嶅瓨鍦ㄧ殑鍛戒护鏃剁粰鍑烘尝娴嚎涓庨棶棰樻彁绀?|
+| **妗岄潰搴旂敤** | 绾?JDK 瀹炵幇锛屽彲鐢?`jpackage` 鎵撳寘鎴愬厤瀹夎 `.exe`锛岀洰鏍囨満鍣ㄦ棤闇€瀹夎 Java |
 
-![IntelliSense 补全](docs/screenshot-intellisense.png)
+![IntelliSense 琛ュ叏](docs/screenshot-intellisense.png)
 
-## 环境要求
+## 鐜瑕佹眰
 
 * Windows 10 / 11
-* **JDK 17 或更高**（开发使用 JDK 27 验证）
-* 不需要 Maven / Gradle，不需要联网下载任何第三方依赖
+* **JDK 17 鎴栨洿楂?*锛堝紑鍙戜娇鐢?JDK 27 楠岃瘉锛?* 涓嶉渶瑕?Maven / Gradle锛屼笉闇€瑕佽仈缃戜笅杞戒换浣曠涓夋柟渚濊禆
 
-## 构建与运行
-
+## 鏋勫缓涓庤繍琛?
 ```powershell
-.\build.ps1 -Clean        # 编译并打包 -> build\cpgui.jar
-.\build.ps1 -Run          # 编译后直接启动
-```
+.\build.ps1 -Clean        # 缂栬瘧骞舵墦鍖?-> build\cpgui.jar
+.\build.ps1 -Run          # 缂栬瘧鍚庣洿鎺ュ惎鍔?```
 
-习惯用 `cmd.exe`：
-
+涔犳儻鐢?`cmd.exe`锛?
 ```bat
 build.bat
 run.bat
 ```
 
-构建脚本会在 `JAVA_HOME`、`D:\Java`、`C:\Program Files\Java` 等常见位置寻找 JDK，
-也可以显式指定：
+鏋勫缓鑴氭湰浼氬湪 `JAVA_HOME`銆乣D:\Java`銆乣C:\Program Files\Java` 绛夊父瑙佷綅缃鎵?JDK锛?涔熷彲浠ユ樉寮忔寚瀹氾細
 
 ```powershell
 $env:JAVA_HOME = "D:\Java\jdk-27"
 .\build.ps1
 ```
 
-## 打包成免安装 exe
+## 鎵撳寘鎴愬厤瀹夎 exe
 
 ```powershell
 .\package.ps1 -Clean
-# 产物：dist\CmdPowerShellGUI\CmdPowerShellGUI.exe（约 75 MB，含精简运行时）
+# 浜х墿锛歞ist\CmdPowerShellGUI\CmdPowerShellGUI.exe锛堢害 75 MB锛屽惈绮剧畝杩愯鏃讹級
 ```
 
-`package.ps1` 调用 JDK 自带的 `jpackage`，并且**在打包时用 Java2D 现场画出图标**再转成
-`.ico`，所以仓库里不需要存放任何二进制素材。目标机器上不装 Java 也能直接双击运行。
-
-## 快捷键
-
-| 快捷键 | 作用 |
+`package.ps1` 璋冪敤 JDK 鑷甫鐨?`jpackage`锛屽苟涓?*鍦ㄦ墦鍖呮椂鐢?Java2D 鐜板満鐢诲嚭鍥炬爣**鍐嶈浆鎴?`.ico`锛屾墍浠ヤ粨搴撻噷涓嶉渶瑕佸瓨鏀句换浣曚簩杩涘埗绱犳潗銆傜洰鏍囨満鍣ㄤ笂涓嶈 Java 涔熻兘鐩存帴鍙屽嚮杩愯銆?
+## 蹇嵎閿?
+| 蹇嵎閿?| 浣滅敤 |
 | --- | --- |
-| `Ctrl+Enter` | 运行选中内容，没有选中则运行整个脚本 |
-| `Ctrl+Shift+Enter` | 运行整个脚本（忽略选中） |
-| `Ctrl+L` | 运行光标所在的那条命令（自动识别 `^` / 反引号续行） |
-| `F2` | 停止当前标签页的解释器 |
-| `Ctrl+Space` | 手动触发补全 |
-| `↑` `↓` `PgUp` `PgDn` / `Enter` / `Tab` / `Esc` | 补全弹出时选择、接受、关闭 |
-| `Ctrl+T` / `Ctrl+W` | 新建 / 关闭标签页 |
-| `Ctrl+O` / `Ctrl+S` / `Ctrl+Shift+S` | 打开 / 保存 / 另存为 |
-| `Ctrl+K` | 选择工作区目录 |
-| `Ctrl+=` / `Ctrl+-` | 放大 / 缩小编辑器字号 |
-| `Ctrl+Shift+F` | 选择编辑器与控制台字体 |
-| 回车 | 在编辑器内始终换行；在输出面板底部则执行输入的命令 |
-| `↑` `↓`（输出面板） | 调出此前输入过的命令 |
+| `Ctrl+Enter` | 杩愯閫変腑鍐呭锛屾病鏈夐€変腑鍒欒繍琛屾暣涓剼鏈?|
+| `Ctrl+Shift+Enter` | 杩愯鏁翠釜鑴氭湰锛堝拷鐣ラ€変腑锛?|
+| `Ctrl+L` | 杩愯鍏夋爣鎵€鍦ㄧ殑閭ｆ潯鍛戒护锛堣嚜鍔ㄨ瘑鍒?`^` / 鍙嶅紩鍙风画琛岋級 |
+| `F2` | 鍋滄褰撳墠鏍囩椤电殑瑙ｉ噴鍣?|
+| `Ctrl+Space` | 鎵嬪姩瑙﹀彂琛ュ叏 |
+| `鈫慲 `鈫揱 `PgUp` `PgDn` / `Enter` / `Tab` / `Esc` | 琛ュ叏寮瑰嚭鏃堕€夋嫨銆佹帴鍙椼€佸叧闂?|
+| `Ctrl+T` / `Ctrl+W` | 鏂板缓 / 鍏抽棴鏍囩椤?|
+| `Ctrl+O` / `Ctrl+S` / `Ctrl+Shift+S` | 鎵撳紑 / 淇濆瓨 / 鍙﹀瓨涓?|
+| `Ctrl+K` | 閫夋嫨宸ヤ綔鍖虹洰褰?|
+| `Ctrl+=` / `Ctrl+-` | 鏀惧ぇ / 缂╁皬缂栬緫鍣ㄥ瓧鍙?|
+| `Ctrl+Shift+F` | 閫夋嫨缂栬緫鍣ㄤ笌鎺у埗鍙板瓧浣?|
+| 鍥炶溅 | 鍦ㄧ紪杈戝櫒鍐呭缁堟崲琛岋紱鍦ㄨ緭鍑洪潰鏉垮簳閮ㄥ垯鎵ц杈撳叆鐨勫懡浠?|
+| `鈫慲 `鈫揱锛堣緭鍑洪潰鏉匡級 | 璋冨嚭姝ゅ墠杈撳叆杩囩殑鍛戒护 |
 
-## 目录结构
+## 鐩綍缁撴瀯
 
 ```
 cmd-powershell-GUI/
-├── build.ps1 / build.bat / run.bat     构建与运行
-├── package.ps1                         打包成免安装 exe（jpackage）
-├── src/main/java/com/dogepopcat/cpgui/
-│   ├── Main.java                       程序入口
-│   ├── AppInfo.java                    名称 / 版本
-│   ├── analysis/                       ScriptParser、ShellLexer、DangerAnalyzer
-│   ├── completion/                     补全目录、候选计算、路径补全、参数提示
-│   ├── io/                             ScriptFile：按解释器选择编码读写脚本
-│   ├── shell/                          ShellSession、SessionRegistry、ConsoleCharset
-│   ├── util/                           CommandLine：还原当前进程命令行
-│   └── ui/                             窗口、标签页、控制台、高亮、诊断、补全弹窗
-├── tools/dev/                          开发期验证工具（不参与打包）
-├── docs/                               README 用截图
-└── build/ dist/                        构建产物（已被 .gitignore 忽略）
-```
+鈹溾攢鈹€ build.ps1 / build.bat / run.bat     鏋勫缓涓庤繍琛?鈹溾攢鈹€ package.ps1                         鎵撳寘鎴愬厤瀹夎 exe锛坖package锛?鈹溾攢鈹€ src/main/java/com/dogepopcat/cpgui/
+鈹?  鈹溾攢鈹€ Main.java                       绋嬪簭鍏ュ彛
+鈹?  鈹溾攢鈹€ AppInfo.java                    鍚嶇О / 鐗堟湰
+鈹?  鈹溾攢鈹€ analysis/                       ScriptParser銆丼hellLexer銆丏angerAnalyzer
+鈹?  鈹溾攢鈹€ completion/                     琛ュ叏鐩綍銆佸€欓€夎绠椼€佽矾寰勮ˉ鍏ㄣ€佸弬鏁版彁绀?鈹?  鈹溾攢鈹€ io/                             ScriptFile锛氭寜瑙ｉ噴鍣ㄩ€夋嫨缂栫爜璇诲啓鑴氭湰
+鈹?  鈹溾攢鈹€ shell/                          ShellSession銆丼essionRegistry銆丆onsoleCharset
+鈹?  鈹溾攢鈹€ util/                           CommandLine锛氳繕鍘熷綋鍓嶈繘绋嬪懡浠よ
+鈹?  鈹斺攢鈹€ ui/                             绐楀彛銆佹爣绛鹃〉銆佹帶鍒跺彴銆侀珮浜€佽瘖鏂€佽ˉ鍏ㄥ脊绐?鈹溾攢鈹€ tools/dev/                          寮€鍙戞湡楠岃瘉宸ュ叿锛堜笉鍙備笌鎵撳寘锛?鈹溾攢鈹€ docs/                               README 鐢ㄦ埅鍥?鈹斺攢鈹€ build/ dist/                        鏋勫缓浜х墿锛堝凡琚?.gitignore 蹇界暐锛?```
 
-## 技术选型说明
+## 鎶€鏈€夊瀷璇存槑
 
-选择 **Java + Swing** 而不是 Electron 之类方案：
+閫夋嫨 **Java + Swing** 鑰屼笉鏄?Electron 涔嬬被鏂规锛?
+1. **鐪熸鐨勬闈㈢搴旂敤**銆係wing 鐩存帴璋冪敤 Win32 鍘熺敓绐楀彛锛屼笉鍐呭祵娴忚鍣ㄥ唴鏍革紝涓嶆槸銆岀綉椤靛澹炽€嶃€?2. **闆跺閮ㄤ緷璧?*銆係wing 灞炰簬 JDK 鑷甫鐨?`java.desktop` 妯″潡锛宑lone 涓嬫潵灏辫兘缂栬瘧杩愯锛?   涓嶄緷璧?Maven 涓ぎ浠撳簱锛屼篃娌℃湁 `node_modules`銆?3. **鎵撳寘浣撶Н涓庡惎鍔ㄩ€熷害**銆俙jpackage` 鍙互鎶婅繍琛屾椂涓€璧锋墦鍖呮垚鍏嶅畨瑁?exe锛?   鐢ㄦ埛鏈哄櫒涓婁笉瑁?Java 涔熻兘璺戙€?4. **鏂囨湰澶勭悊鑳藉姏寮?*銆傝瘝娉曞垎鏋愩€佽ˉ鍏ㄥ€欓€夈€侀潤鎬佹鏌ヨ繖浜涖€屼豢 IDE銆嶅姛鑳斤紝鐢?Java 瀹炵幇鏇存竻鏅般€佹洿瀹夊叏銆?
+## 瀹炵幇涓婂嚑涓€煎緱涓€鎻愮殑缁嗚妭
 
-1. **真正的桌面端应用**。Swing 直接调用 Win32 原生窗口，不内嵌浏览器内核，不是「网页套壳」。
-2. **零外部依赖**。Swing 属于 JDK 自带的 `java.desktop` 模块，clone 下来就能编译运行，
-   不依赖 Maven 中央仓库，也没有 `node_modules`。
-3. **打包体积与启动速度**。`jpackage` 可以把运行时一起打包成免安装 exe，
-   用户机器上不装 Java 也能跑。
-4. **文本处理能力强**。词法分析、补全候选、静态检查这些「仿 IDE」功能，用 Java 实现更清晰、更安全。
+杩欎簺鍧戦兘鏄厛鍐欐帰閽堢▼搴忛獙璇併€佸啀钀藉埌浠ｇ爜閲岀殑锛屼笉鏄媿鑴戣鍐冲畾鐨勶細
 
-## 实现上几个值得一提的细节
+* **鎺у埗鍙颁唬鐮侀〉**銆俙cmd.exe` / `powershell.exe` 杈撳嚭鍒扮閬撴椂浣跨敤**鎺у埗鍙?OEM 浠ｇ爜椤?*
+  锛堜腑鏂囩郴缁熸槸 936锛夛紝鑰屼笉鏄?UTF-8銆傜▼搴忓惎鍔ㄦ椂鎵ц `chcp` 璇诲嚭浠ｇ爜椤靛苟鏄犲皠鎴?Java 瀛楃闆嗭紝
+  鍚﹀垯涓枃璺緞鍏ㄦ槸涔辩爜銆傦紙椤哄甫鍙戠幇锛歚chcp 65001` 閲嶅畾鍚戝埌绠￠亾浼氳 `cmd` 鐩存帴閫€鍑猴紝鎵€浠ヤ笉鑳界敤銆傦級
+* **鍛戒护缁撴潫鏍囪**銆傜閬撻噷娌℃湁鎻愮ず绗﹀彲浠ョ瓑寰咃紝鎵€浠ユ瘡鏉″懡浠ゅ悗闈㈣拷鍔犱竴鍙ュ甫搴忓彿鐨勬爣璁板懡浠わ紝
+  璇诲埌鏍囪鎵嶇畻杩欐潯鍛戒护璺戝畬锛屽悓鏃舵嬁鍒扮湡瀹為€€鍑虹爜銆?* **cmd 鐨勫浣欑┖琛?*銆俙cmd.exe` 鍦ㄦ瘡娆℃墦鍗版彁绀虹**涔嬪墠**閮戒細鍏堣緭鍑轰竴涓┖琛岋紝
+  绋嬪簭浼氭妸銆岀揣鎸ㄧ潃鎻愮ず绗︾殑绌鸿銆嶄涪鎺夛紝浣嗕繚鐣?`echo.` 杩欑鐪熸鐨勭┖琛岃緭鍑恒€?* **鑴氭湰缂栫爜**銆侾owerShell 鍙湁鍦?`.ps1` 甯?BOM 鏃舵墠鎸?UTF-8 璇诲彇锛宍cmd` 鍒欐寜鎺у埗鍙颁唬鐮侀〉璇?  `.bat`銆傚洜姝?`.ps1` 鍐欐垚銆孶TF-8 + BOM銆嶏紝`.cmd` 鍐欐垚鎺у埗鍙颁唬鐮侀〉锛涢亣鍒颁唬鐮侀〉琛ㄧず涓嶄簡鐨勫瓧绗?  浼氭槑纭彁绀鸿€屼笉鏄倓鎮勬浛鎹㈡垚 `?`銆?* **鎹㈣绗?*銆係wing 鏂囨。鍐呴儴缁熶竴鏄?`LF`锛屼繚瀛樻椂缁熶竴杞洖 `CRLF`锛屽洜涓?`cmd.exe` 鏄寜琛岃В鏋愭壒澶勭悊鐨勩€?* **绠＄悊鍛橀噸鍚?*銆俉indows 鏃犳硶鎻愬崌宸茶繍琛岃繘绋嬬殑鏉冮檺锛屽彧鑳介噸鏂版媺璧蜂竴浠斤紱
+  绋嬪簭浼氳繕鍘熷綋鍓嶈繘绋嬬殑瀹屾暣鍛戒护琛岋紝骞舵妸鍙墽琛屾枃浠朵笌鍙傛暟閫氳繃**鐜鍙橀噺**浼犵粰 PowerShell锛?  閬垮紑鎵€鏈夊眰鐨勫紩鍙疯浆涔夎鍒欍€?* **甯冨眬**銆俙JSplitPane` 鐨勫垎闅旀潯鍒濆浣嶇疆鏉ヨ嚜涓や晶缁勪欢鐨?preferred size锛?  绌虹紪杈戝櫒鏃朵細琚尋鍒板緢绐勶紝鎵€浠ュ湪绐楀彛绗竴娆℃嬁鍒扮湡瀹炲昂瀵稿悗鏄惧紡璁剧疆涓€娆℃瘮渚嬨€?* **宸ヤ綔鐩綍**銆備粠蹇嵎鏂瑰紡鎴栧紑濮嬭彍鍗曞惎鍔ㄦ椂锛學indows 浼氭妸宸ヤ綔鐩綍璁炬垚 `C:\Windows\System32`銆?  绋嬪簭浼氭嫆缁濈郴缁熺洰褰曪紝鏀逛负鍥為€€鍒扮敤鎴蜂富鐩綍鈥斺€斿惁鍒欍€屽彟瀛樹负銆嶅拰 `cd` 鐨勯粯璁や綅缃氨鍦ㄧ郴缁熺洰褰曢噷銆?* **鏌ヨ涓庤繍琛屽繀椤诲尯鍒?*銆傝鍙栦細璇濆綋鍓嶇洰褰曚篃鏄竴鏉″懡浠わ紝浣嗗畠灞炰簬鍐呴儴鏌ヨ锛?  濡傛灉瀹冧篃瑙﹀彂銆屽懡浠ゅ畬鎴愩€嶅洖璋冿紝鑰屽洖璋冨張瑕佽鍙栫洰褰曪紝灏变細鏃犻檺閫掑綊銆傛煡璇㈠洜姝や笉鍙戝畬鎴愰€氱煡銆?* **闈欐€佸垵濮嬪寲椤哄簭**銆傜炕璇戣〃鐢卞叾鍚庡０鏄庣殑鏁扮粍鏋勫缓锛岄潤鎬佸垵濮嬪寲鎸夊０鏄庨『搴忔墽琛岋紝
+  缁撴灉鏄竴鏃︾敤鍒拌ˉ鍏ㄥ氨鎶涘紓甯搞€傚０鏄庨『搴忓湪杩欓噷鏄湁璇箟鐨勩€?
+## 寮€鍙戞湡楠岃瘉宸ュ叿
 
-这些坑都是先写探针程序验证、再落到代码里的，不是拍脑袋决定的：
+`tools/dev/` 涓嬫槸涓€缁勫紑鍙戞湡宸ュ叿锛?*涓嶅弬涓庢墦鍖?*锛宍src/` 涔熶笉渚濊禆瀹冧滑锛夛細
 
-* **控制台代码页**。`cmd.exe` / `powershell.exe` 输出到管道时使用**控制台 OEM 代码页**
-  （中文系统是 936），而不是 UTF-8。程序启动时执行 `chcp` 读出代码页并映射成 Java 字符集，
-  否则中文路径全是乱码。（顺带发现：`chcp 65001` 重定向到管道会让 `cmd` 直接退出，所以不能用。）
-* **命令结束标记**。管道里没有提示符可以等待，所以每条命令后面追加一句带序号的标记命令，
-  读到标记才算这条命令跑完，同时拿到真实退出码。
-* **cmd 的多余空行**。`cmd.exe` 在每次打印提示符**之前**都会先输出一个空行，
-  程序会把「紧挨着提示符的空行」丢掉，但保留 `echo.` 这种真正的空行输出。
-* **脚本编码**。PowerShell 只有在 `.ps1` 带 BOM 时才按 UTF-8 读取，`cmd` 则按控制台代码页读
-  `.bat`。因此 `.ps1` 写成「UTF-8 + BOM」，`.cmd` 写成控制台代码页；遇到代码页表示不了的字符
-  会明确提示而不是悄悄替换成 `?`。
-* **换行符**。Swing 文档内部统一是 `LF`，保存时统一转回 `CRLF`，因为 `cmd.exe` 是按行解析批处理的。
-* **管理员重启**。Windows 无法提升已运行进程的权限，只能重新拉起一份；
-  程序会还原当前进程的完整命令行，并把可执行文件与参数通过**环境变量**传给 PowerShell，
-  避开所有层的引号转义规则。
-* **布局**。`JSplitPane` 的分隔条初始位置来自两侧组件的 preferred size，
-  空编辑器时会被挤到很窄，所以在窗口第一次拿到真实尺寸后显式设置一次比例。
-* **工作目录**。从快捷方式或开始菜单启动时，Windows 会把工作目录设成 `C:\Windows\System32`。
-  程序会拒绝系统目录，改为回退到用户主目录——否则「另存为」和 `cd` 的默认位置就在系统目录里。
-* **查询与运行必须区分**。读取会话当前目录也是一条命令，但它属于内部查询：
-  如果它也触发「命令完成」回调，而回调又要读取目录，就会无限递归。查询因此不发完成通知。
-* **静态初始化顺序**。翻译表由其后声明的数组构建，静态初始化按声明顺序执行，
-  结果是一旦用到补全就抛异常。声明顺序在这里是有语义的。
-
-## 开发期验证工具
-
-`tools/dev/` 下是一组开发期工具（**不参与打包**，`src/` 也不依赖它们）：
-
-| 工具 | 验证内容 |
+| 宸ュ叿 | 楠岃瘉鍐呭 |
 | --- | --- |
-| `dev.SessionProbe` | 直接驱动真实解释器，打印原始输出；当年就是靠它确认了代码页、提示符标记与退出码协议 |
-| `dev.ParserProbe` | 打印脚本切分结果与命中的危险规则 |
-| `dev.CompletionProbe` | 补全候选、路径补全、参数提示的断言 |
-| `dev.CompletionGuiProbe` | 通过真实窗口验证补全弹窗与「接受」行为 |
-| `dev.DangerProbe` | 用替身回答确认弹窗，验证危险命令拦截确实生效 |
-| `dev.FileProbe` | 编码往返、CRLF、脏标记、打开保存 |
-| `dev.AdminProbe` | 还原命令行、`Start-Process` 通道 |
-| `dev.GuiDemo` | 打开真实窗口并填入示例脚本，用于人工查看与截图 |
-| `screenshot.ps1` | 启动、置顶（含模态对话框）并截图 |
+| `dev.SessionProbe` | 鐩存帴椹卞姩鐪熷疄瑙ｉ噴鍣紝鎵撳嵃鍘熷杈撳嚭锛涘綋骞村氨鏄潬瀹冪‘璁や簡浠ｇ爜椤点€佹彁绀虹鏍囪涓庨€€鍑虹爜鍗忚 |
+| `dev.ParserProbe` | 鎵撳嵃鑴氭湰鍒囧垎缁撴灉涓庡懡涓殑鍗遍櫓瑙勫垯 |
+| `dev.CompletionProbe` | 琛ュ叏鍊欓€夈€佽矾寰勮ˉ鍏ㄣ€佸弬鏁版彁绀虹殑鏂█ |
+| `dev.CompletionGuiProbe` | 閫氳繃鐪熷疄绐楀彛楠岃瘉琛ュ叏寮圭獥涓庛€屾帴鍙椼€嶈涓?|
+| `dev.DangerProbe` | 鐢ㄦ浛韬洖绛旂‘璁ゅ脊绐楋紝楠岃瘉鍗遍櫓鍛戒护鎷︽埅纭疄鐢熸晥 |
+| `dev.FileProbe` | 缂栫爜寰€杩斻€丆RLF銆佽剰鏍囪銆佹墦寮€淇濆瓨 |
+| `dev.AdminProbe` | 杩樺師鍛戒护琛屻€乣Start-Process` 閫氶亾 |
+| `dev.GuiDemo` | 鎵撳紑鐪熷疄绐楀彛骞跺～鍏ョず渚嬭剼鏈紝鐢ㄤ簬浜哄伐鏌ョ湅涓庢埅鍥?|
+| `screenshot.ps1` | 鍚姩銆佺疆椤讹紙鍚ā鎬佸璇濇锛夊苟鎴浘 |
 
-用法见 [tools/dev/README.md](tools/dev/README.md)。
+鐢ㄦ硶瑙?[tools/dev/README.md](tools/dev/README.md)銆?
+> 瀹夊叏鎻愮ず锛歚dev.DangerProbe` 涓?`GuiDemo danger` 閲岀殑鍗遍櫓鍛戒护閮芥寚鍚?*涓嶅瓨鍦ㄧ殑涓存椂璺緞**锛?> 涓?`GuiDemo` 涓嶄細鑷姩鎵ц绀轰緥銆備慨鏀硅繖浜涜剼鏈椂璇蜂繚鎸佽繖涓€鐐光€斺€旂‘璁ゅ脊绐椾竴鏃﹁鎺ュ彈锛?> 鍛戒护鏄湡鐨勪細鎵ц鐨勩€?
+## 涓枃 / English
 
-> 安全提示：`dev.DangerProbe` 与 `GuiDemo danger` 里的危险命令都指向**不存在的临时路径**，
-> 且 `GuiDemo` 不会自动执行示例。修改这些脚本时请保持这一点——确认弹窗一旦被接受，
-> 命令是真的会执行的。
-
-## 中文 / English
-
-界面默认跟随系统语言（中文 Windows 上即为中文），可在 **视图 → 语言** 中即时切换。
-应用自身显示的所有文字——菜单、工具栏、状态栏、问题列表、对话框、危险命令说明、
-命令与开关的帮助文字——都由 `i18n/Msg` 统一提供中英两份，缺少翻译会直接编译报错。
-
-> 说明：`cmd.exe` 与 PowerShell 自身输出的文字随 Windows 语言而定，那部分不属于本程序。
-
-一次提交只做一件最小的事，每一步都可编译、可运行：
-
-| # | 提交 | 内容 |
+鐣岄潰榛樿璺熼殢绯荤粺璇█锛堜腑鏂?Windows 涓婂嵆涓轰腑鏂囷級锛屽彲鍦?**瑙嗗浘 鈫?璇█** 涓嵆鏃跺垏鎹€?搴旂敤鑷韩鏄剧ず鐨勬墍鏈夋枃瀛椻€斺€旇彍鍗曘€佸伐鍏锋爮銆佺姸鎬佹爮銆侀棶棰樺垪琛ㄣ€佸璇濇銆佸嵄闄╁懡浠よ鏄庛€?鍛戒护涓庡紑鍏崇殑甯姪鏂囧瓧鈥斺€旈兘鐢?`i18n/Msg` 缁熶竴鎻愪緵涓嫳涓や唤锛岀己灏戠炕璇戜細鐩存帴缂栬瘧鎶ラ敊銆?
+> 璇存槑锛歚cmd.exe` 涓?PowerShell 鑷韩杈撳嚭鐨勬枃瀛楅殢 Windows 璇█鑰屽畾锛岄偅閮ㄥ垎涓嶅睘浜庢湰绋嬪簭銆?
+涓€娆℃彁浜ゅ彧鍋氫竴浠舵渶灏忕殑浜嬶紝姣忎竴姝ラ兘鍙紪璇戙€佸彲杩愯锛?
+| # | 鎻愪氦 | 鍐呭 |
 | --- | --- | --- |
-| 1 | `feat: project skeleton…` | 构建脚本 + 空窗口 |
-| 2 | `feat: main window with editor tabs…` | 标签页、行号、控制台、状态栏 |
-| 3 | `feat: run scripts in a persistent interpreter session` | 常驻会话、运行/停止、退出码 |
-| 4 | `feat: graphical workspace selection` | 图形化 `cd` |
-| 5 | `feat: split scripts into commands…` | 命令切分、按行/全部运行 |
-| 6 | `feat: syntax highlighting…` | 词法分析与高亮 |
-| 7 | `feat: detect dangerous commands…` | 危险命令检查 + 问题列表 + 波浪线 |
-| 8 | `feat: confirm before running a dangerous command` | 运行前二次确认 |
-| 9 | `feat: IntelliSense completion…` | 补全弹窗 |
-| 10 | `feat: complete file paths and hint command parameters` | 路径补全 + 参数提示 |
-| 11 | `feat: open, save and protect unsaved scripts` | 文件操作与编码处理 |
-| 12 | `feat: restart the application with administrator rights` | 管理员模式 |
-| 13 | `build: package as a self-contained Windows application` | jpackage 打包与文档 |
-| 14 | `fix: stop the hint from taking over the editor` | 提示只在输入命令名时出现、Enter 可换行、虚化提示 |
-| 15 | `feat: make the working directory obvious and safe` | 工作目录栏、拒绝 System32 默认值 |
-| 16 | `feat: report commands that do not exist` | 未知命令检查 |
-| 17 | `style: give the tool bar buttons an even size and a visible edge` | 工具栏等宽按钮 |
-| 18 | `feat: administrator mode opens a second window and shows its state` | 管理员模式新开窗口并按状态着色 |
-| 19 | `feat: type single commands straight into the console` | 控制台单行输入 |
-| 20 | `feat: choose the editor and console font` | 字体选择 |
-| 21 | `feat: complete Chinese and English interface` | 双语界面 |
-| 22 | `feat: translate the command catalogue as well` | 命令说明双语化 |
+| 1 | `feat: project skeleton鈥 | 鏋勫缓鑴氭湰 + 绌虹獥鍙?|
+| 2 | `feat: main window with editor tabs鈥 | 鏍囩椤点€佽鍙枫€佹帶鍒跺彴銆佺姸鎬佹爮 |
+| 3 | `feat: run scripts in a persistent interpreter session` | 甯搁┗浼氳瘽銆佽繍琛?鍋滄銆侀€€鍑虹爜 |
+| 4 | `feat: graphical workspace selection` | 鍥惧舰鍖?`cd` |
+| 5 | `feat: split scripts into commands鈥 | 鍛戒护鍒囧垎銆佹寜琛?鍏ㄩ儴杩愯 |
+| 6 | `feat: syntax highlighting鈥 | 璇嶆硶鍒嗘瀽涓庨珮浜?|
+| 7 | `feat: detect dangerous commands鈥 | 鍗遍櫓鍛戒护妫€鏌?+ 闂鍒楄〃 + 娉㈡氮绾?|
+| 8 | `feat: confirm before running a dangerous command` | 杩愯鍓嶄簩娆＄‘璁?|
+| 9 | `feat: IntelliSense completion鈥 | 琛ュ叏寮圭獥 |
+| 10 | `feat: complete file paths and hint command parameters` | 璺緞琛ュ叏 + 鍙傛暟鎻愮ず |
+| 11 | `feat: open, save and protect unsaved scripts` | 鏂囦欢鎿嶄綔涓庣紪鐮佸鐞?|
+| 12 | `feat: restart the application with administrator rights` | 绠＄悊鍛樻ā寮?|
+| 13 | `build: package as a self-contained Windows application` | jpackage 鎵撳寘涓庢枃妗?|
+| 14 | `fix: stop the hint from taking over the editor` | 鎻愮ず鍙湪杈撳叆鍛戒护鍚嶆椂鍑虹幇銆丒nter 鍙崲琛屻€佽櫄鍖栨彁绀?|
+| 15 | `feat: make the working directory obvious and safe` | 宸ヤ綔鐩綍鏍忋€佹嫆缁?System32 榛樿鍊?|
+| 16 | `feat: report commands that do not exist` | 鏈煡鍛戒护妫€鏌?|
+| 17 | `style: give the tool bar buttons an even size and a visible edge` | 宸ュ叿鏍忕瓑瀹芥寜閽?|
+| 18 | `feat: administrator mode opens a second window and shows its state` | 绠＄悊鍛樻ā寮忔柊寮€绐楀彛骞舵寜鐘舵€佺潃鑹?|
+| 19 | `feat: type single commands straight into the console` | 鎺у埗鍙板崟琛岃緭鍏?|
+| 20 | `feat: choose the editor and console font` | 瀛椾綋閫夋嫨 |
+| 21 | `feat: complete Chinese and English interface` | 鍙岃鐣岄潰 |
+| 22 | `feat: translate the command catalogue as well` | 鍛戒护璇存槑鍙岃鍖?|
 
-## 贡献与提交规范
-
+## 璐＄尞涓庢彁浜よ鑼?
 ```
-feat:     新功能
-fix:      修 bug
-docs:     只改文档
-style:    格式调整，不影响逻辑
-refactor: 重构，不改变行为
-build:    构建脚本 / 打包
-test:     测试
+feat:     鏂板姛鑳?fix:      淇?bug
+docs:     鍙敼鏂囨。
+style:    鏍煎紡璋冩暣锛屼笉褰卞搷閫昏緫
+refactor: 閲嶆瀯锛屼笉鏀瑰彉琛屼负
+build:    鏋勫缓鑴氭湰 / 鎵撳寘
+test:     娴嬭瘯
 ```
 
-## 许可证
-
+## 璁稿彲璇?
 [MIT](LICENSE)
