@@ -1,6 +1,8 @@
 package com.dogepopcat.cpgui.ui;
 
 import com.dogepopcat.cpgui.AppInfo;
+import com.dogepopcat.cpgui.analysis.DangerAnalyzer;
+import com.dogepopcat.cpgui.analysis.DangerAnalyzer.Finding;
 import com.dogepopcat.cpgui.analysis.ScriptParser;
 import com.dogepopcat.cpgui.shell.SessionRegistry;
 import com.dogepopcat.cpgui.shell.ShellKind;
@@ -29,6 +31,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import java.util.function.Consumer;
 
 /**
@@ -456,6 +459,17 @@ public class MainFrame extends JFrame {
             return;
         }
 
+        List<Finding> dangers = DangerAnalyzer.dangers(tab.shellKind(), script);
+        if (!dangers.isEmpty() && !confirmation.confirm(dangers, script)) {
+            console.appendSystem("[run cancelled: "
+                    + dangers.size()
+                    + (dangers.size() == 1 ? " dangerous command was" : " dangerous commands were")
+                    + " not confirmed]" + System.lineSeparator());
+            statusBar.setMessage("Run cancelled");
+            statusBar.setMessageColor(Theme.WARNING);
+            return;
+        }
+
         ShellSession session;
         try {
             session = sessions.acquire(tab, tab.shellKind(), workspace,
@@ -486,10 +500,72 @@ public class MainFrame extends JFrame {
         }
     }
 
+    // --- dangerous command confirmation -------------------------------------
+
+    /**
+     * Decides whether a script containing dangerous commands may run. Swapped
+     * out in tests so the prompt can be answered without a human.
+     */
+    public interface DangerConfirmation {
+
+        /**
+         * @param dangers the dangerous findings found in the script
+         * @param script  the script about to be submitted
+         * @return {@code true} to run anyway, {@code false} to cancel
+         */
+        boolean confirm(List<Finding> dangers, String script);
+    }
+
+    private DangerConfirmation confirmation = this::askAboutDangerousCommands;
+
+    /** Replaces the confirmation prompt, mainly so tests can answer it. */
+    public void setDangerConfirmation(DangerConfirmation confirmation) {
+        this.confirmation = confirmation == null
+                ? (dangers, script) -> false
+                : confirmation;
+    }
+
+    /**
+     * Shows the warning dialog listing every dangerous command found.
+     *
+     * <p>The cancel button is the default, so an accidental Enter never runs a
+     * destructive script.</p>
+     */
+    private boolean askAboutDangerousCommands(List<Finding> dangers, String script) {
+        StringBuilder text = new StringBuilder();
+        text.append("<html><b>This script contains ")
+                .append(dangers.size())
+                .append(dangers.size() == 1 ? " destructive command" : " destructive commands")
+                .append(".</b><br><br>");
+        for (Finding danger : dangers) {
+            text.append("<b>Line ").append(danger.lineIndex() + 1).append(":</b> ")
+                    .append(escapeHtml(danger.message())).append("<br>");
+            text.append("<font color='#666666'>&nbsp;&nbsp;&nbsp;&nbsp;")
+                    .append(escapeHtml(danger.snippet()))
+                    .append("</font><br>");
+            text.append("<font color='#666666'>&nbsp;&nbsp;&nbsp;&nbsp;\u2192 ")
+                    .append(escapeHtml(danger.advice()))
+                    .append("</font><br><br>");
+        }
+        text.append("Run it anyway?</html>");
+
+        JLabel message = new JLabel(text.toString());
+        message.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+
+        Object[] options = {"Run anyway", "Cancel"};
+        int choice = JOptionPane.showOptionDialog(this, message, "Dangerous command",
+                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE, null,
+                options, options[1]);
+        return choice == 0;
+    }
+
+    private static String escapeHtml(String value) {
+        return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+    }
+
     /** Stops the active tab's interpreter, discarding its state. */
     public void stopActiveSession() {
-        EditorTab tab = editorTabs.current();
-        if (tab == null) {
+        EditorTab tab = editorTabs.current();        if (tab == null) {
             return;
         }
         ShellSession session = sessions.peek(tab);
