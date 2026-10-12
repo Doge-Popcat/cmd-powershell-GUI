@@ -53,18 +53,18 @@ public final class ScriptParser {
         if (script == null || script.isEmpty()) {
             return result;
         }
-        String[] lines = script.split("\\R", -1);
-        int offset = 0;
-        int index = 0;
-        while (index < lines.length) {
-            String line = lines[index];
-            int lineStart = offset;
-            offset += line.length() + 1; // + the line terminator
+        List<String> lines = new ArrayList<>();
+        List<Integer> starts = new ArrayList<>();
+        splitLines(script, lines, starts);
 
+        int index = 0;
+        while (index < lines.size()) {
+            String line = lines.get(index);
             if (line.isBlank()) {
                 index++;
                 continue;
             }
+            int lineStart = starts.get(index);
             if (isCommentLine(kind, line)) {
                 result.add(new Command(index, line, true, lineStart, lineStart + line.length()));
                 index++;
@@ -73,17 +73,41 @@ public final class ScriptParser {
 
             StringBuilder text = new StringBuilder(line);
             int lastLine = index;
-            while (hasContinuation(kind, text.toString()) && lastLine + 1 < lines.length) {
+            while (hasContinuation(kind, text.toString()) && lastLine + 1 < lines.size()) {
                 lastLine++;
-                String next = lines[lastLine];
-                text.append('\n').append(next);
-                offset += next.length() + 1;
+                text.append('\n').append(lines.get(lastLine));
             }
-            int end = lineStart + text.length();
+            int end = starts.get(lastLine) + lines.get(lastLine).length();
             result.add(new Command(index, text.toString(), false, lineStart, end));
             index = lastLine + 1;
         }
         return result;
+    }
+
+    /**
+     * Splits text on any of the three line terminators, recording where each
+     * line starts so that offsets stay exact for {@code \r\n} sources.
+     */
+    private static void splitLines(String script, List<String> lines, List<Integer> starts) {
+        int length = script.length();
+        int lineStart = 0;
+        int i = 0;
+        while (i < length) {
+            char c = script.charAt(i);
+            if (c == '\r' || c == '\n') {
+                lines.add(script.substring(lineStart, i));
+                starts.add(lineStart);
+                if (c == '\r' && i + 1 < length && script.charAt(i + 1) == '\n') {
+                    i++;
+                }
+                i++;
+                lineStart = i;
+            } else {
+                i++;
+            }
+        }
+        lines.add(script.substring(lineStart));
+        starts.add(lineStart);
     }
 
     /**

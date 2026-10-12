@@ -45,6 +45,7 @@ public class MainFrame extends JFrame {
     private final ConsolePane console = new ConsolePane();
     private final StatusBar statusBar = new StatusBar();
     private final JTabbedPane bottomTabs = new JTabbedPane();
+    private final ProblemsPanel problems = new ProblemsPanel();
     private final JSplitPane splitPane;
     private final SessionRegistry sessions = new SessionRegistry();
 
@@ -133,6 +134,8 @@ public class MainFrame extends JFrame {
 
         editorTabs.setSelectionListener(index -> activeTabChanged());
         editorTabs.setTabCloseRequestHandler(this::closeTab);
+        problems.setLineNavigator(this::goToLine);
+        bottomTabs.addTab("Problems", problems);
         bottomTabs.addTab("Output", console);
         bottomTabs.setBorder(BorderFactory.createEmptyBorder());
 
@@ -309,8 +312,23 @@ public class MainFrame extends JFrame {
                 statusBar.setCaret(pos[0], pos[1]);
             }
         });
+        tab.diagnostics().setListener(findings -> {
+            if (tab == editorTabs.current()) {
+                problems.setFindings(findings);
+            }
+        });
         SwingUtilities.invokeLater(tab.textPane()::requestFocusInWindow);
         return tab;
+    }
+
+    /** Moves the caret of the active tab to a zero based line. */
+    public void goToLine(int line) {
+        EditorTab tab = editorTabs.current();
+        if (tab == null) {
+            return;
+        }
+        tab.selectLine(line);
+        tab.textPane().requestFocusInWindow();
     }
 
     /** Closes the tab at {@code index}, releasing its interpreter session. */
@@ -335,6 +353,7 @@ public class MainFrame extends JFrame {
         }
         statusBar.setShell(tab.shellKind());
         toolBar.setInterpreter(tab.shellKind());
+        problems.setFindings(tab.diagnostics().findings());
         int[] pos = tab.caretLineColumn();
         statusBar.setCaret(pos[0], pos[1]);
         SwingUtilities.invokeLater(tab.textPane()::requestFocusInWindow);
@@ -667,6 +686,16 @@ public class MainFrame extends JFrame {
     /** @return the status bar at the bottom of the window. */
     public StatusBar statusBar() {
         return statusBar;
+    }
+
+    /** Selects a tab in the bottom pane by its title. */
+    public void selectBottomTab(String title) {
+        for (int i = 0; i < bottomTabs.getTabCount(); i++) {
+            if (title.equals(bottomTabs.getTitleAt(i))) {
+                bottomTabs.setSelectedIndex(i);
+                return;
+            }
+        }
     }
 
     /** @return the split pane separating editor and console. */

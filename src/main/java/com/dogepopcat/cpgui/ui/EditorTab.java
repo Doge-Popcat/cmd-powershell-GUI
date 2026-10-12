@@ -42,6 +42,7 @@ public class EditorTab extends JPanel {
     private final LineNumberView gutter;
     private final UndoManager undo = new UndoManager();
     private final SyntaxHighlighter highlighter;
+    private final DiagnosticsOverlay diagnostics;
 
     private ShellKind shellKind;
     private File file;
@@ -95,6 +96,7 @@ public class EditorTab extends JPanel {
         });
 
         highlighter = new SyntaxHighlighter(this);
+        diagnostics = new DiagnosticsOverlay(this);
     }
 
     private void installUndoRedo() {
@@ -272,13 +274,19 @@ public class EditorTab extends JPanel {
     /** Switches the interpreter this tab's scripts are sent to. */
     public void setShellKind(ShellKind shellKind) {
         this.shellKind = shellKind == null ? ShellKind.CMD : shellKind;
-        // The syntax rules changed, so re-colour with the new interpreter's.
+        // The syntax and the danger rules changed, so re-evaluate both.
         highlighter.refresh();
+        diagnostics.refresh();
     }
 
     /** @return the highlighter colouring this tab. */
     public SyntaxHighlighter highlighter() {
         return highlighter;
+    }
+
+    /** @return the diagnostics overlay analysing this tab. */
+    public DiagnosticsOverlay diagnostics() {
+        return diagnostics;
     }
 
     /** @return the tab title, prefixed with {@code *} when unsaved. */
