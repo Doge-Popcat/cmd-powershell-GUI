@@ -320,6 +320,7 @@ public class MainFrame extends JFrame {
                 problems.setFindings(findings);
             }
         });
+        tab.completion().setBaseDirectory(workspace);
         SwingUtilities.invokeLater(tab.textPane()::requestFocusInWindow);
         return tab;
     }
@@ -612,6 +613,9 @@ public class MainFrame extends JFrame {
         }
         this.workspace = directory;
         statusBar.setWorkspace(directory);
+        for (EditorTab open : editorTabs.tabs()) {
+            open.completion().setBaseDirectory(directory);
+        }
 
         int updated = 0;
         for (EditorTab tab : editorTabs.tabs()) {

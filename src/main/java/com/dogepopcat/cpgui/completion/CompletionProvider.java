@@ -49,11 +49,18 @@ public final class CompletionProvider {
     /**
      * Everything the provider needs to make a suggestion.
      *
-     * @param kind   interpreter whose language applies
-     * @param text   the whole document
-     * @param caret  caret offset into {@code text}
+     * @param kind    interpreter whose language applies
+     * @param text    the whole document
+     * @param caret   caret offset into {@code text}
+     * @param baseDir directory relative paths are resolved against, or
+     *                {@code null} to skip path completion
      */
-    public record Context(ShellKind kind, String text, int caret) {
+    public record Context(ShellKind kind, String text, int caret, java.io.File baseDir) {
+
+        /** Convenience constructor for callers that do not complete paths. */
+        public Context(ShellKind kind, String text, int caret) {
+            this(kind, text, caret, null);
+        }
     }
 
     /**
@@ -87,6 +94,12 @@ public final class CompletionProvider {
         String linePrefix = lineStart(text, wordStart);
         String command = currentCommand(linePrefix);
         String prefix = word.toLowerCase(Locale.ROOT);
+
+        // A word that already looks like a path is completed from the disk.
+        List<CompletionItem> paths = PathCompleter.complete(word, context.baseDir(), kind);
+        if (!paths.isEmpty()) {
+            return new Result(wordStart, caret, paths);
+        }
 
         List<CompletionItem> candidates = candidatesFor(kind, word, command, linePrefix);
         return new Result(wordStart, caret, filter(candidates, prefix));

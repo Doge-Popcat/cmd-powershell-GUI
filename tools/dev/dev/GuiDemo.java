@@ -69,7 +69,14 @@ public final class GuiDemo {
         boolean danger = mode.equals("danger");
         boolean confirm = mode.equals("confirm");
         boolean complete = mode.equals("complete");
+        boolean path = mode.equals("path");
+        boolean hint = mode.equals("hint");
         String script = powershell ? PS_SCRIPT : (danger || confirm) ? DANGER_SCRIPT : CMD_SCRIPT;
+
+        String demoText = complete ? "Get-Ch"
+                : path ? "dir build\\"
+                : hint ? "dir /b /s"
+                : script;
 
         SwingUtilities.invokeLater(() -> {
             MainFrame frame = new MainFrame();
@@ -78,7 +85,7 @@ public final class GuiDemo {
                 frame.setActiveShellKind(ShellKind.POWERSHELL);
             }
             EditorTab tab = frame.editorTabs().current();
-            tab.setText(complete ? "Get-Ch" : script);
+            tab.setText(demoText);
             tab.textPane().setCaretPosition(tab.getText().length());
             if (danger) {
                 tab.diagnostics().refresh();
@@ -89,9 +96,25 @@ public final class GuiDemo {
                 // Opens the real modal warning so it can be inspected.
                 frame.runActiveScript();
             }
-            if (complete) {
+            if (complete || path) {
                 // Wait for layout so the popup can be placed at the caret.
                 SwingUtilities.invokeLater(() -> tab.completion().trigger(true));
+            }
+            if (hint) {
+                // Let the layout settle, then show the signature hint alone.
+                javax.swing.Timer timer = new javax.swing.Timer(800, e -> {
+                    tab.completion().close();
+                    com.dogepopcat.cpgui.completion.ParameterHint parameterHint =
+                            com.dogepopcat.cpgui.completion.ParameterHint.forCaret(
+                                    tab.shellKind(), tab.getText(),
+                                    tab.textPane().getCaretPosition());
+                    if (parameterHint != null) {
+                        tab.completion().hintWindow().show(tab.textPane(),
+                                tab.textPane().getCaretPosition(), parameterHint);
+                    }
+                });
+                timer.setRepeats(false);
+                timer.start();
             }
         });
         Thread.sleep(Long.MAX_VALUE);

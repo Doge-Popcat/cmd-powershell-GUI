@@ -32,23 +32,41 @@ public final class CompletionController implements DocumentListener {
 
     /** Delay before typing opens the popup, in milliseconds. */
     private static final int AUTO_DELAY_MS = 140;
+    /** Delay before the parameter hint appears, in milliseconds. */
+    private static final int HINT_DELAY_MS = 320;
 
     private final EditorTab tab;
     private final CompletionPopup popup = new CompletionPopup();
+    private final ParameterHintWindow hint = new ParameterHintWindow();
     private final Timer autoTrigger;
+    private final Timer hintTimer;
 
     private List<CompletionItem> items = List.of();
     private int replaceStart;
     private int replaceEnd;
     private boolean applying;
     private boolean suppressAutoOpen;
+    private java.io.File baseDirectory;
 
     public CompletionController(EditorTab tab) {
         this.tab = tab;
         this.autoTrigger = new Timer(AUTO_DELAY_MS, e -> openIfUseful());
         this.autoTrigger.setRepeats(false);
+        this.hintTimer = new Timer(HINT_DELAY_MS, e -> updateHint());
+        this.hintTimer.setRepeats(false);
         installKeyBindings();
         tab.document().addDocumentListener(this);
+        pane().addCaretListener(e -> hintTimer.restart());
+    }
+
+    /**
+     * Sets the directory relative paths in the document are completed against.
+     *
+     * @param baseDirectory the workspace, or {@code null} to disable path
+     *                      completion
+     */
+    public void setBaseDirectory(java.io.File baseDirectory) {
+        this.baseDirectory = baseDirectory;
     }
 
     private JTextComponent pane() {
@@ -137,7 +155,7 @@ public final class CompletionController implements DocumentListener {
     private void refresh() {
         CompletionProvider.Result result = CompletionProvider.complete(
                 new CompletionProvider.Context(tab.shellKind(), tab.getText(),
-                        pane().getCaretPosition()));
+                        pane().getCaretPosition(), baseDirectory));
         items = result.items();
         replaceStart = result.replaceStart();
         replaceEnd = result.replaceEnd();
@@ -145,7 +163,27 @@ public final class CompletionController implements DocumentListener {
             popup.hide();
             return;
         }
+        hint.hide();
         popup.show(pane(), pane().getCaretPosition(), items);
+    }
+
+    /**
+     * Shows or hides the signature hint for the command the caret is inside.
+     * The hint stays out of the way while the suggestion list is open.
+     */
+    private void updateHint() {
+        if (popup.isVisible() || !pane().isShowing()) {
+            hint.hide();
+            return;
+        }
+        com.dogepopcat.cpgui.completion.ParameterHint parameterHint =
+                com.dogepopcat.cpgui.completion.ParameterHint.forCaret(
+                        tab.shellKind(), tab.getText(), pane().getCaretPosition());
+        if (parameterHint == null) {
+            hint.hide();
+            return;
+        }
+        hint.show(pane(), pane().getCaretPosition(), parameterHint);
     }
 
     /** Hides the popup and keeps it hidden until the caret moves to a new word. */
@@ -232,6 +270,7 @@ public final class CompletionController implements DocumentListener {
             return;
         }
         if (suppressAutoOpen || !isTriggerCharacter(e)) {
+            hintTimer.restart();
             return;
         }
         autoTrigger.restart();
@@ -260,8 +299,14 @@ public final class CompletionController implements DocumentListener {
         }
     }
 
-    /** Hides the popup, for example when the tab loses focus. */
+    /** Hides the popup and the hint, for example when the tab loses focus. */
     public void close() {
         popup.hide();
+        hint.hide();
+    }
+
+    /** @return the parameter hint window, exposed so tests can inspect it. */
+    public ParameterHintWindow hintWindow() {
+        return hint;
     }
 }
