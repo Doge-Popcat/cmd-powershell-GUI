@@ -22,6 +22,7 @@ public class StatusBar extends JPanel {
     private static final long serialVersionUID = 1L;
 
     private final JLabel message = new JLabel("Ready");
+    private final JLabel hint = new JLabel();
     private final JLabel workspace = new JLabel();
     private final JLabel shell = new JLabel();
     private final JLabel elevation = new JLabel();
@@ -38,6 +39,13 @@ public class StatusBar extends JPanel {
         left.add(message);
         add(left, BorderLayout.WEST);
 
+        // The command signature lives here rather than in a floating window so
+        // it can never cover the input method candidate list.
+        hint.setFont(Theme.mono(12));
+        hint.setForeground(Theme.CONSOLE_INFO);
+        hint.setHorizontalAlignment(SwingConstants.CENTER);
+        add(hint, BorderLayout.CENTER);
+
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         right.setOpaque(false);
         right.add(workspace);
@@ -48,6 +56,16 @@ public class StatusBar extends JPanel {
         right.add(separator());
         right.add(caret);
         add(right, BorderLayout.EAST);
+    }
+
+    /**
+     * Shows the signature of the command the caret is inside.
+     *
+     * @param text the text to show, or {@code null} to clear the hint
+     */
+    public void setHint(String text) {
+        hint.setText(text == null ? "" : text);
+        hint.setToolTipText(text == null || text.isEmpty() ? null : text);
     }
 
     private JSeparator separator() {

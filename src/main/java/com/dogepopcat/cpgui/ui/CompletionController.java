@@ -2,6 +2,7 @@ package com.dogepopcat.cpgui.ui;
 
 import com.dogepopcat.cpgui.completion.CompletionItem;
 import com.dogepopcat.cpgui.completion.CompletionProvider;
+import com.dogepopcat.cpgui.completion.ParameterHint;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
@@ -18,39 +19,48 @@ import javax.swing.text.StyledDocument;
 import java.awt.event.ActionEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
+import java.io.File;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
- * Drives the IntelliSense popup for one editor tab.
+ * Drives the IntelliSense behaviour of one editor tab.
  *
- * <p>Suggestions appear automatically while typing and on Ctrl+Space. While the
- * popup is open the arrow keys, Enter, Tab and Escape are redirected to it; as
- * soon as it closes those keys fall back to the editor's own behaviour, so the
- * shortcut never takes anything away from normal typing.</p>
+ * <p>Suggestions are deliberately quiet. While the command name itself is being
+ * typed, a single match is shown as greyed ghost text in the editor and several
+ * matches open the suggestion list. Once a space ends the command name nothing
+ * pops up on its own any more: switches, parameters and paths still appear,
+ * because those are what legitimately follow a command, and Ctrl+Space can
+ * always ask for more.</p>
+ *
+ * <p>Enter is never intercepted, so it always inserts a newline. Tab accepts the
+ * highlighted suggestion, matching the JetBrains IDEs, and the arrow keys move
+ * through the list.</p>
  */
 public final class CompletionController implements DocumentListener {
 
-    /** Delay before typing opens the popup, in milliseconds. */
-    private static final int AUTO_DELAY_MS = 140;
-    /** Delay before the parameter hint appears, in milliseconds. */
-    private static final int HINT_DELAY_MS = 320;
+    /** Delay before typing opens the suggestion list, in milliseconds. */
+    private static final int AUTO_DELAY_MS = 120;
+    /** Delay before the status bar signature is refreshed, in milliseconds. */
+    private static final int HINT_DELAY_MS = 250;
 
     private final EditorTab tab;
     private final CompletionPopup popup = new CompletionPopup();
-    private final ParameterHintWindow hint = new ParameterHintWindow();
     private final Timer autoTrigger;
     private final Timer hintTimer;
 
     private List<CompletionItem> items = List.of();
+    private CompletionItem ghostItem;
+    private Consumer<ParameterHint> hintConsumer = hint -> { };
     private int replaceStart;
     private int replaceEnd;
     private boolean applying;
     private boolean suppressAutoOpen;
-    private java.io.File baseDirectory;
+    private File baseDirectory;
 
     public CompletionController(EditorTab tab) {
         this.tab = tab;
-        this.autoTrigger = new Timer(AUTO_DELAY_MS, e -> openIfUseful());
+        this.autoTrigger = new Timer(AUTO_DELAY_MS, e -> autoOpen());
         this.autoTrigger.setRepeats(false);
         this.hintTimer = new Timer(HINT_DELAY_MS, e -> updateHint());
         this.hintTimer.setRepeats(false);
@@ -59,18 +69,31 @@ public final class CompletionController implements DocumentListener {
         pane().addCaretListener(e -> hintTimer.restart());
     }
 
+    private JTextComponent pane() {
+        return tab.textPane();
+    }
+
+    private GhostTextPane ghostPane() {
+        return (GhostTextPane) tab.textPane();
+    }
+
     /**
      * Sets the directory relative paths in the document are completed against.
      *
      * @param baseDirectory the workspace, or {@code null} to disable path
      *                      completion
      */
-    public void setBaseDirectory(java.io.File baseDirectory) {
+    public void setBaseDirectory(File baseDirectory) {
         this.baseDirectory = baseDirectory;
     }
 
-    private JTextComponent pane() {
-        return tab.textPane();
+    /**
+     * Registers the receiver for the current command's signature. The text is
+     * shown in the status bar rather than in a floating window, so it can never
+     * cover the input method candidate list.
+     */
+    public void setHintConsumer(Consumer<ParameterHint> hintConsumer) {
+        this.hintConsumer = hintConsumer == null ? hint -> { } : hintConsumer;
     }
 
     // --- key bindings -------------------------------------------------------
@@ -79,7 +102,7 @@ public final class CompletionController implements DocumentListener {
         InputMap input = pane().getInputMap(JComponent.WHEN_FOCUSED);
         ActionMap actions = pane().getActionMap();
 
-        // Ctrl+Space opens the popup whether or not it is already showing.
+        // Ctrl+Space asks for suggestions wherever the caret happens to be.
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_SPACE, InputEvent.CTRL_DOWN_MASK),
                 "cpgui.complete.trigger");
         actions.put("cpgui.complete.trigger", new AbstractAction() {
@@ -91,7 +114,7 @@ public final class CompletionController implements DocumentListener {
             }
         });
 
-        // The rest only act while the popup is open, then fall back.
+        // Navigation works only while the list is open, then falls through.
         bind(input, actions, KeyStroke.getKeyStroke(KeyEvent.VK_UP, 0),
                 "cpgui.complete.up", e -> navigate(-1));
         bind(input, actions, KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, 0),
@@ -100,17 +123,30 @@ public final class CompletionController implements DocumentListener {
                 "cpgui.complete.pageUp", e -> navigate(-8));
         bind(input, actions, KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_DOWN, 0),
                 "cpgui.complete.pageDown", e -> navigate(8));
-        bind(input, actions, KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0),
-                "cpgui.complete.accept", e -> accept());
-        bind(input, actions, KeyStroke.getKeyStroke(KeyEvent.VK_TAB, 0),
-                "cpgui.complete.acceptTab", e -> accept());
         bind(input, actions, KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0),
                 "cpgui.complete.dismiss", e -> dismiss());
+
+        // Tab accepts a suggestion, or the ghost text, and otherwise keeps its
+        // normal meaning. Enter is deliberately left alone so it always inserts
+        // a newline, and Ctrl+Enter still runs the script.
+        Object tabKey = input.get(KeyStroke.getKeyStroke(KeyEvent.VK_TAB, 0));
+        Action defaultTab = tabKey == null ? null : actions.get(tabKey);
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_TAB, 0), "cpgui.complete.acceptTab");
+        actions.put("cpgui.complete.acceptTab", new AbstractAction() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                if (!acceptSuggestion() && defaultTab != null) {
+                    defaultTab.actionPerformed(event);
+                }
+            }
+        });
     }
 
     /**
      * Installs an action that defers to whatever the component did before, so
-     * the popup never permanently steals a key.
+     * the suggestion list never permanently steals a key.
      */
     private void bind(InputMap input, ActionMap actions, KeyStroke keyStroke, String name,
                       java.util.function.Consumer<ActionEvent> body) {
@@ -137,86 +173,144 @@ public final class CompletionController implements DocumentListener {
 
     // --- triggering ---------------------------------------------------------
 
-    /** Opens the popup immediately and selects the best match. */
+    /** Opens the list immediately, ignoring the automatic quiet rules. */
     public void trigger(boolean manual) {
         if (manual) {
             suppressAutoOpen = false;
         }
-        refresh();
-    }
-
-    private void openIfUseful() {
-        if (suppressAutoOpen) {
-            return;
-        }
-        refresh();
-    }
-
-    private void refresh() {
-        CompletionProvider.Result result = CompletionProvider.complete(
-                new CompletionProvider.Context(tab.shellKind(), tab.getText(),
-                        pane().getCaretPosition(), baseDirectory));
-        items = result.items();
-        replaceStart = result.replaceStart();
-        replaceEnd = result.replaceEnd();
-        if (items.isEmpty()) {
-            popup.hide();
-            return;
-        }
-        hint.hide();
-        popup.show(pane(), pane().getCaretPosition(), items);
+        refresh(manual);
     }
 
     /**
-     * Shows or hides the signature hint for the command the caret is inside.
-     * The hint stays out of the way while the suggestion list is open.
+     * Opens the list only when the caret is somewhere suggestions are genuinely
+     * expected. The provider returns nothing for a plain argument word, so the
+     * check is simply whether there is something to show.
      */
-    private void updateHint() {
-        if (popup.isVisible() || !pane().isShowing()) {
-            hint.hide();
+    private void autoOpen() {
+        if (suppressAutoOpen) {
             return;
         }
-        com.dogepopcat.cpgui.completion.ParameterHint parameterHint =
-                com.dogepopcat.cpgui.completion.ParameterHint.forCaret(
-                        tab.shellKind(), tab.getText(), pane().getCaretPosition());
-        if (parameterHint == null) {
-            hint.hide();
-            return;
-        }
-        hint.show(pane(), pane().getCaretPosition(), parameterHint);
+        refresh(false);
     }
 
-    /** Hides the popup and keeps it hidden until the caret moves to a new word. */
+    private void refresh(boolean manual) {
+        if (!pane().isShowing()) {
+            close();
+            return;
+        }
+        CompletionProvider.Result result = CompletionProvider.complete(
+                new CompletionProvider.Context(tab.shellKind(), tab.getText(),
+                        pane().getCaretPosition(), baseDirectory, manual));
+        items = result.items();
+        replaceStart = result.replaceStart();
+        replaceEnd = result.replaceEnd();
+
+        if (items.isEmpty()) {
+            close();
+            return;
+        }
+        if (!manual && items.size() == 1) {
+            // One clear answer is shown inline instead of in a list.
+            showGhost(items.get(0));
+            return;
+        }
+        clearGhost();
+        popup.show(pane(), pane().getCaretPosition(), items);
+    }
+
+    private void showGhost(CompletionItem item) {
+        String typed = "";
+        try {
+            typed = tab.getText().substring(
+                    Math.max(0, replaceStart), Math.min(replaceEnd, tab.getText().length()));
+        } catch (RuntimeException ignored) {
+            // Fall through with an empty prefix.
+        }
+        String insertion = item.insertText();
+        if (!insertion.startsWith(typed) || insertion.length() <= typed.length()) {
+            // Path and parameter suggestions are not always a plain extension of
+            // what was typed, so they are not shown as ghost text.
+            clearGhost();
+            return;
+        }
+        ghostItem = item;
+        ghostPane().setGhostText(insertion.substring(typed.length()));
+        hintConsumer.accept(new ParameterHint(item.label(), item.detail(), List.of()));
+    }
+
+    private void clearGhost() {
+        ghostItem = null;
+        ghostPane().setGhostText("");
+    }
+
+    /** Refreshes the status bar signature for the command under the caret. */
+    private void updateHint() {
+        if (popup.isVisible()) {
+            return;
+        }
+        if (ghostItem != null) {
+            hintConsumer.accept(new ParameterHint(ghostItem.label(), ghostItem.detail(),
+                    List.of()));
+            return;
+        }
+        hintConsumer.accept(ParameterHint.forCaret(tab.shellKind(), tab.getText(),
+                pane().getCaretPosition()));
+    }
+
+    /** Hides the list and keeps it hidden until the user asks again. */
     private void dismiss() {
         suppressAutoOpen = true;
-        popup.hide();
+        close();
     }
 
     // --- accepting ----------------------------------------------------------
+
+    /**
+     * Accepts the highlighted suggestion, or the ghost text when the list is
+     * closed.
+     *
+     * @return {@code true} when something was inserted
+     */
+    public boolean acceptSuggestion() {
+        if (popup.isVisible()) {
+            accept();
+            return true;
+        }
+        if (ghostItem != null) {
+            insert(ghostItem, replaceStart, replaceEnd);
+            return true;
+        }
+        return false;
+    }
 
     /** Replaces the partial word with the highlighted suggestion. */
     public void accept() {
         CompletionItem item = popup.selected();
         popup.hide();
-        if (item == null) {
-            return;
+        if (item != null) {
+            insert(item, replaceStart, replaceEnd);
         }
+    }
+
+    private void insert(CompletionItem item, int start, int end) {
         applying = true;
         try {
             StyledDocument document = tab.document();
-            int start = Math.min(replaceStart, document.getLength());
-            int end = Math.min(replaceEnd, document.getLength());
-            if (end > start) {
-                document.remove(start, end - start);
+            int from = Math.min(Math.max(0, start), document.getLength());
+            int to = Math.min(Math.max(from, end), document.getLength());
+            if (to > from) {
+                document.remove(from, to - from);
             }
-            document.insertString(start, item.insertText(), null);
-            pane().setCaretPosition(Math.min(start + item.insertText().length(),
+            document.insertString(from, item.insertText(), null);
+            pane().setCaretPosition(Math.min(from + item.insertText().length(),
                     document.getLength()));
         } catch (BadLocationException ignored) {
             // The document moved under us; the next keystroke will try again.
         } finally {
             applying = false;
         }
+        clearGhost();
+        popup.hide();
         tab.highlighter().refresh();
         tab.diagnostics().refresh();
     }
@@ -234,6 +328,11 @@ public final class CompletionController implements DocumentListener {
     /** @return the popup, exposed so tests can inspect the selection. */
     public CompletionPopup popup() {
         return popup;
+    }
+
+    /** @return the inline suggestion, or {@code null} when there is none. */
+    public CompletionItem ghostItem() {
+        return ghostItem;
     }
 
     // --- document tracking --------------------------------------------------
@@ -262,15 +361,16 @@ public final class CompletionController implements DocumentListener {
             suppressAutoOpen = false;
         }
         if (popup.isVisible()) {
-            // Refilter against the new text so the list follows the typing.
             autoTrigger.restart();
             return;
         }
+        clearGhost();
         if (e.getType() != DocumentEvent.EventType.INSERT) {
+            hintTimer.restart();
             return;
         }
+        hintTimer.restart();
         if (suppressAutoOpen || !isTriggerCharacter(e)) {
-            hintTimer.restart();
             return;
         }
         autoTrigger.restart();
@@ -292,21 +392,18 @@ public final class CompletionController implements DocumentListener {
                 return false;
             }
             char last = inserted.charAt(inserted.length() - 1);
+            // Letters and digits type a name; the rest start a switch, a
+            // variable or a path, all of which are worth suggesting.
             return Character.isLetterOrDigit(last) || last == '\\' || last == '/'
-                    || last == '$' || last == '%';
+                    || last == '$' || last == '%' || last == '-' || last == '.';
         } catch (BadLocationException ex) {
             return false;
         }
     }
 
-    /** Hides the popup and the hint, for example when the tab loses focus. */
+    /** Hides everything this controller shows. */
     public void close() {
         popup.hide();
-        hint.hide();
-    }
-
-    /** @return the parameter hint window, exposed so tests can inspect it. */
-    public ParameterHintWindow hintWindow() {
-        return hint;
+        clearGhost();
     }
 }

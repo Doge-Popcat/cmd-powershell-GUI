@@ -54,12 +54,29 @@ public final class CompletionProvider {
      * @param caret   caret offset into {@code text}
      * @param baseDir directory relative paths are resolved against, or
      *                {@code null} to skip path completion
+     * @param manual  {@code true} when the user asked for suggestions with
+     *                Ctrl+Space, which allows broader results in an argument
+     *                position than typing does
      */
-    public record Context(ShellKind kind, String text, int caret, java.io.File baseDir) {
+    public record Context(ShellKind kind, String text, int caret, java.io.File baseDir,
+                          boolean manual) {
 
         /** Convenience constructor for callers that do not complete paths. */
         public Context(ShellKind kind, String text, int caret) {
-            this(kind, text, caret, null);
+            this(kind, text, caret, null, true);
+        }
+
+        /**
+         * Convenience constructor for callers that only need the default,
+         * non-manual behaviour.
+         *
+         * @param kind    interpreter whose language applies
+         * @param text    the whole document
+         * @param caret   caret offset into {@code text}
+         * @param baseDir directory relative paths are resolved against
+         */
+        public Context(ShellKind kind, String text, int caret, java.io.File baseDir) {
+            this(kind, text, caret, baseDir, false);
         }
     }
 
@@ -101,29 +118,36 @@ public final class CompletionProvider {
             return new Result(wordStart, caret, paths);
         }
 
-        List<CompletionItem> candidates = candidatesFor(kind, word, command, linePrefix);
+        List<CompletionItem> candidates = candidatesFor(kind, word, command, linePrefix,
+                context.manual());
         return new Result(wordStart, caret, filter(candidates, prefix));
     }
 
+    /**
+     * Chooses the candidate set for the caret's position.
+     *
+     * <p>Typing in the middle of a command's arguments offers nothing on its
+     * own: suggesting every command there would nag the user with a list they
+     * did not ask for. Switches, parameters and paths are still offered because
+     * those are the things that actually follow a command, and Ctrl+Space can
+     * always ask for more.</p>
+     */
     private static List<CompletionItem> candidatesFor(ShellKind kind, String word,
-                                                      String command, String linePrefix) {
+                                                      String command, String linePrefix,
+                                                      boolean manual) {
+        boolean firstWord = isFirstWord(linePrefix);
         if (kind == ShellKind.CMD) {
             if (word.startsWith("%")) {
                 return cmdVariables();
             }
             if (word.startsWith("/") || word.startsWith("-")) {
                 List<CompletionItem> switches = CommandCatalog.switchesFor(kind, command);
-                return switches.isEmpty() ? CommandCatalog.commands(kind) : switches;
+                return switches.isEmpty() && manual ? CommandCatalog.commands(kind) : switches;
             }
-            if (word.isEmpty() && !command.isEmpty() && !linePrefix.isBlank()) {
-                List<CompletionItem> switches = CommandCatalog.switchesFor(kind, command);
-                if (!switches.isEmpty()) {
-                    List<CompletionItem> combined = new ArrayList<>(switches);
-                    combined.addAll(CommandCatalog.commands(kind));
-                    return combined;
-                }
+            if (firstWord) {
+                return CommandCatalog.commands(kind);
             }
-            return CommandCatalog.commands(kind);
+            return manual ? manualFallback(kind, command) : List.of();
         }
 
         // PowerShell
@@ -133,12 +157,35 @@ public final class CompletionProvider {
         if (word.startsWith("-")) {
             return CommandCatalog.commonParameters(kind);
         }
-        if (word.isEmpty() && !command.isEmpty() && !linePrefix.isBlank()) {
-            List<CompletionItem> combined = new ArrayList<>(CommandCatalog.commonParameters(kind));
-            combined.addAll(CommandCatalog.commands(kind));
-            return combined;
+        if (firstWord) {
+            return CommandCatalog.commands(kind);
         }
-        return CommandCatalog.commands(kind);
+        return manual ? manualFallback(kind, command) : List.of();
+    }
+
+    /** What Ctrl+Space offers once the caret is inside a command's arguments. */
+    private static List<CompletionItem> manualFallback(ShellKind kind, String command) {
+        List<CompletionItem> combined = new ArrayList<>(CommandCatalog.switchesFor(kind, command));
+        combined.addAll(CommandCatalog.commonParameters(kind));
+        combined.addAll(CommandCatalog.commands(kind));
+        return combined;
+    }
+
+    /**
+     * @param linePrefix the line up to the word being completed
+     * @return {@code true} when the word is the command name itself rather than
+     *         one of its arguments
+     */
+    private static boolean isFirstWord(String linePrefix) {
+        int statementStart = 0;
+        for (int i = linePrefix.length() - 1; i >= 0; i--) {
+            char c = linePrefix.charAt(i);
+            if (c == '|' || c == '&' || c == ';') {
+                statementStart = i + 1;
+                break;
+            }
+        }
+        return linePrefix.substring(statementStart).isBlank();
     }
 
     private static List<CompletionItem> cmdVariables() {

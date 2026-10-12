@@ -203,6 +203,21 @@ public class MainFrame extends JFrame {
             public void windowClosing(WindowEvent e) {
                 dispatchClose();
             }
+
+            @Override
+            public void windowDeactivated(WindowEvent e) {
+                hideAllCompletions();
+            }
+
+            @Override
+            public void windowIconified(WindowEvent e) {
+                hideAllCompletions();
+            }
+        });
+        addWindowStateListener(e -> {
+            if ((e.getNewState() & java.awt.Frame.ICONIFIED) != 0) {
+                hideAllCompletions();
+            }
         });
 
         createTab(ShellKind.CMD);
@@ -360,8 +375,37 @@ public class MainFrame extends JFrame {
             }
         });
         tab.completion().setBaseDirectory(workspace);
+        tab.completion().setHintConsumer(parameterHint -> {
+            if (tab == editorTabs.current()) {
+                statusBar.setHint(parameterHint == null ? null : describe(parameterHint));
+            }
+        });
         SwingUtilities.invokeLater(tab.textPane()::requestFocusInWindow);
         return tab;
+    }
+
+    /** Renders a signature hint as one line for the status bar. */
+    private static String describe(com.dogepopcat.cpgui.completion.ParameterHint hint) {
+        StringBuilder text = new StringBuilder(hint.command());
+        if (hint.description() != null && !hint.description().isBlank()) {
+            text.append(" \u2014 ").append(hint.description());
+        }
+        String parameters = hint.parameterLine();
+        if (!parameters.isEmpty()) {
+            text.append("   ").append(parameters);
+        }
+        return text.toString();
+    }
+
+    /**
+     * Hides every suggestion list. They are always-on-top windows, so they must
+     * not survive the frame being minimised or another application taking over.
+     */
+    private void hideAllCompletions() {
+        for (EditorTab open : editorTabs.tabs()) {
+            open.completion().close();
+        }
+        statusBar.setHint(null);
     }
 
     /**

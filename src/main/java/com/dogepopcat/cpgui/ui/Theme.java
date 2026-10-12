@@ -18,6 +18,8 @@ public final class Theme {
     public static final Color EDITOR_CARET = new Color(0xF0, 0xF0, 0xF0);
     public static final Color EDITOR_SELECTION = new Color(0x2F, 0x54, 0x7A);
     public static final Color CURRENT_LINE = new Color(0x28, 0x2A, 0x2E);
+    /** Greyed inline suggestion drawn after the caret. */
+    public static final Color GHOST_TEXT = new Color(0x60, 0x66, 0x70);
 
     // --- gutter ------------------------------------------------------------
     public static final Color GUTTER_BACKGROUND = new Color(0x24, 0x25, 0x29);

@@ -69,11 +69,13 @@ public final class GuiDemo {
         boolean danger = mode.equals("danger");
         boolean confirm = mode.equals("confirm");
         boolean complete = mode.equals("complete");
+        boolean list = mode.equals("list");
         boolean path = mode.equals("path");
         boolean hint = mode.equals("hint");
         String script = powershell ? PS_SCRIPT : (danger || confirm) ? DANGER_SCRIPT : CMD_SCRIPT;
 
         String demoText = complete ? "Get-Ch"
+                : list ? "di"
                 : path ? "dir build\\"
                 : hint ? "dir /b /s"
                 : script;
@@ -96,25 +98,15 @@ public final class GuiDemo {
                 // Opens the real modal warning so it can be inspected.
                 frame.runActiveScript();
             }
-            if (complete || path) {
-                // Wait for layout so the popup can be placed at the caret.
-                SwingUtilities.invokeLater(() -> tab.completion().trigger(true));
+            if (complete || path || list) {
+                // Wait for layout so suggestions can be placed at the caret.
+                SwingUtilities.invokeLater(() -> tab.completion().trigger(false));
             }
             if (hint) {
-                // Let the layout settle, then show the signature hint alone.
-                javax.swing.Timer timer = new javax.swing.Timer(800, e -> {
-                    tab.completion().close();
-                    com.dogepopcat.cpgui.completion.ParameterHint parameterHint =
-                            com.dogepopcat.cpgui.completion.ParameterHint.forCaret(
-                                    tab.shellKind(), tab.getText(),
-                                    tab.textPane().getCaretPosition());
-                    if (parameterHint != null) {
-                        tab.completion().hintWindow().show(tab.textPane(),
-                                tab.textPane().getCaretPosition(), parameterHint);
-                    }
-                });
-                timer.setRepeats(false);
-                timer.start();
+                // The signature now lives in the status bar; just leave the caret
+                // in the argument area so it appears.
+                tab.textPane().setCaretPosition(tab.getText().length());
+                tab.completion().trigger(false);
             }
         });
         Thread.sleep(Long.MAX_VALUE);

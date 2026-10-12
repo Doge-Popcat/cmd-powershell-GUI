@@ -38,7 +38,7 @@ public class EditorTab extends JPanel {
 
     private static final long serialVersionUID = 1L;
 
-    private final JTextPane textPane = new JTextPane();
+    private final GhostTextPane textPane = new GhostTextPane();
     private final LineNumberView gutter;
     private final UndoManager undo = new UndoManager();
     private final SyntaxHighlighter highlighter;
