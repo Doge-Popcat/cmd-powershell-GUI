@@ -65,14 +65,17 @@ public final class Theme {
     private Theme() {
     }
 
-    /** @return a monospaced font of the given size. */
+    /**
+     * @return a monospaced font of the given size, using the family a Windows
+     *         console would use unless the user has chosen another
+     */
     public static Font mono(int size) {
-        return new Font(Font.MONOSPACED, Font.PLAIN, size);
+        return FontSupport.preferredFont(size);
     }
 
     /** @return a monospaced font of the given size and style. */
     public static Font mono(int size, int style) {
-        return new Font(Font.MONOSPACED, style, size);
+        return FontSupport.preferredFont(size).deriveFont(style);
     }
 
     /** @return a slightly tinted version of {@code base}, used for hover states. */

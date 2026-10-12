@@ -206,38 +206,14 @@ public final class FontChooserDialog extends JDialog {
 
     /** Adds a spacer so the form does not stretch to the dialog width. */
     private void fillFamilies(Font initial) {
-        List<String> monospaced = new ArrayList<>();
-        List<String> others = new ArrayList<>();
-        String[] available = GraphicsEnvironment.getLocalGraphicsEnvironment()
-                .getAvailableFontFamilyNames();
-        Arrays.sort(available, String.CASE_INSENSITIVE_ORDER);
-        for (String name : available) {
-            if (isMonospaced(name)) {
-                monospaced.add(name);
-            } else {
-                others.add(name);
-            }
-        }
-        List<String> ordered = new ArrayList<>(monospaced);
-        ordered.addAll(others);
-        for (String name : ordered) {
+        // Only families that actually draw letters are offered; the symbol and
+        // pi fonts Windows ships would turn every command into boxes.
+        for (String name : FontSupport.usableFamilies()) {
             family.addItem(name);
         }
         family.setSelectedItem(initial.getFamily());
         if (family.getSelectedItem() == null && family.getItemCount() > 0) {
             family.setSelectedIndex(0);
-        }
-    }
-
-    /** @return {@code true} when the family renders every glyph at one width. */
-    private static boolean isMonospaced(String family) {
-        try {
-            Font font = new Font(family, Font.PLAIN, 12);
-            java.awt.FontMetrics metrics = new Canvas().getFontMetrics(font);
-            return metrics.charWidth('i') == metrics.charWidth('W')
-                    && metrics.charWidth('i') > 0;
-        } catch (RuntimeException e) {
-            return false;
         }
     }
 
