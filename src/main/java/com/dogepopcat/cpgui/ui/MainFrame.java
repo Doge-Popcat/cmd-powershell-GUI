@@ -5,6 +5,7 @@ import com.dogepopcat.cpgui.analysis.DangerAnalyzer;
 import com.dogepopcat.cpgui.analysis.DangerAnalyzer.Finding;
 import com.dogepopcat.cpgui.analysis.ScriptParser;
 import com.dogepopcat.cpgui.io.ScriptFile;
+import com.dogepopcat.cpgui.io.WorkspacePolicy;
 import com.dogepopcat.cpgui.shell.SessionRegistry;
 import com.dogepopcat.cpgui.shell.ShellKind;
 import com.dogepopcat.cpgui.shell.ShellSession;
@@ -56,8 +57,9 @@ public class MainFrame extends JFrame {
     private final JSplitPane splitPane;
     private final SessionRegistry sessions = new SessionRegistry();
 
-    private File workspace = new File(System.getProperty("user.dir"));
+    private File workspace = WorkspacePolicy.defaultWorkspace();
     private AppToolBar toolBar;
+    private final LocationBar locationBar = new LocationBar();
     private volatile boolean elevated;
     private boolean dividerPlaced;
 
@@ -183,8 +185,16 @@ public class MainFrame extends JFrame {
 
         toolBar = new AppToolBar(this);
 
+        locationBar.setDirectory(workspace, false);
+        locationBar.setBrowseAction(this::chooseWorkspace);
+        locationBar.setDirectoryConsumer(this::applyTypedDirectory);
+
+        JPanel north = new JPanel(new BorderLayout());
+        north.add(toolBar, BorderLayout.NORTH);
+        north.add(locationBar, BorderLayout.SOUTH);
+
         setJMenuBar(createMenuBar());
-        add(toolBar, BorderLayout.NORTH);
+        add(north, BorderLayout.NORTH);
         add(splitPane, BorderLayout.CENTER);
         add(statusBar, BorderLayout.SOUTH);
 
@@ -643,6 +653,7 @@ public class MainFrame extends JFrame {
         statusBar.setShell(tab.shellKind());
         toolBar.setInterpreter(tab.shellKind());
         problems.setFindings(tab.diagnostics().findings());
+        refreshLiveDirectory(tab);
         int[] pos = tab.caretLineColumn();
         statusBar.setCaret(pos[0], pos[1]);
         SwingUtilities.invokeLater(tab.textPane()::requestFocusInWindow);
@@ -896,8 +907,23 @@ public class MainFrame extends JFrame {
         if (directory == null || !directory.isDirectory()) {
             return;
         }
+        if (WorkspacePolicy.isSystemDirectory(directory)) {
+            // Running commands next to the operating system is how accidents
+            // happen, so a system folder is refused rather than accepted quietly.
+            int choice = JOptionPane.showConfirmDialog(this,
+                    directory.getAbsolutePath() + "\n\n"
+                            + "This is a Windows system folder. Commands run here could damage "
+                            + "the operating system.\n\nUse it anyway?",
+                    "System folder", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+            if (choice != JOptionPane.YES_OPTION) {
+                locationBar.showRejected("refused");
+                statusBar.setMessage("Workspace unchanged");
+                return;
+            }
+        }
         this.workspace = directory;
         statusBar.setWorkspace(directory);
+        locationBar.setDirectory(directory, false);
         for (EditorTab open : editorTabs.tabs()) {
             open.completion().setBaseDirectory(directory);
         }
@@ -925,6 +951,53 @@ public class MainFrame extends JFrame {
 
     private String promptName(ShellKind kind) {
         return kind == ShellKind.CMD ? "CMD" : "PS";
+    }
+
+    /** Applies a directory typed into the location bar. */
+    private void applyTypedDirectory(File directory) {
+        if (directory == null || !directory.isDirectory()) {
+            locationBar.showRejected("not found");
+            statusBar.setMessage("Not a directory: " + directory);
+            return;
+        }
+        setWorkspace(directory);
+    }
+
+    /**
+     * Asks the active tab's interpreter where it actually is and shows the
+     * answer.
+     *
+     * <p>The configured workspace is only where sessions start; a {@code cd}
+     * typed into the editor moves the interpreter somewhere else. Querying the
+     * session keeps the location bar truthful.</p>
+     */
+    public void refreshLiveDirectory(EditorTab tab) {
+        if (tab == null) {
+            return;
+        }
+        ShellSession session = sessions.peek(tab);
+        if (session == null || !session.isAlive() || session.isBusy()) {
+            if (tab == editorTabs.current()) {
+                locationBar.setDirectory(workspace, false);
+            }
+            return;
+        }
+        String probe = tab.shellKind() == ShellKind.CMD ? "cd" : "(Get-Location).Path";
+        try {
+            session.query(probe).thenAccept(result -> {
+                String reported = result.replace("\r", "").strip();
+                if (reported.isEmpty()) {
+                    return;
+                }
+                SwingUtilities.invokeLater(() -> {
+                    if (tab == editorTabs.current()) {
+                        locationBar.setDirectory(new File(reported), true);
+                    }
+                });
+            }).exceptionally(failure -> null);
+        } catch (IllegalStateException busy) {
+            // A command started in the meantime; the next finish will refresh.
+        }
     }
 
     /** Builds the interpreter specific command that changes directory. */
@@ -1133,6 +1206,7 @@ public class MainFrame extends JFrame {
                         ? "Finished, exit code " + exitCode
                         : "Finished with an error, exit code " + exitCode);
                 statusBar.setMessageColor(success ? null : Theme.ERROR);
+                refreshLiveDirectory(tab);
             });
         }
 
@@ -1188,6 +1262,11 @@ public class MainFrame extends JFrame {
     /** @return the directory new interpreter sessions start in. */
     public File workspace() {
         return workspace;
+    }
+
+    /** @return the bar showing the current working directory. */
+    public LocationBar locationBar() {
+        return locationBar;
     }
 
     public Action newTabAction() {

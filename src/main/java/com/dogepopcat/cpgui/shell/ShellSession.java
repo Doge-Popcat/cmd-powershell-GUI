@@ -51,6 +51,8 @@ public final class ShellSession implements AutoCloseable {
     private final Object lock = new Object();
 
     private CompletableFuture<Integer> pending;
+    private CompletableFuture<String> pendingCapture;
+    private StringBuilder captureBuffer;
     private String pendingMarker;
     private long sequence;
     private volatile boolean closed;
@@ -126,6 +128,12 @@ public final class ShellSession implements AutoCloseable {
                 pending = null;
                 pendingMarker = null;
             }
+            if (pendingCapture != null) {
+                pendingCapture.completeExceptionally(
+                        new IllegalStateException("The session ended."));
+                pendingCapture = null;
+                captureBuffer = null;
+            }
         }
         // Only report an interpreter that stopped on its own; a session the
         // application deliberately closed needs no notice.
@@ -195,18 +203,33 @@ public final class ShellSession implements AutoCloseable {
     }
 
     private void emit(String text, boolean error) {
-        if (!text.isEmpty()) {
-            listener.onOutput(text, error);
+        if (text.isEmpty()) {
+            return;
         }
+        // A query keeps its output for the caller instead of showing it.
+        if (!error && captureBuffer != null) {
+            captureBuffer.append(text);
+            return;
+        }
+        listener.onOutput(text, error);
     }
 
     /** Parses the marker payload and completes the pending run. */
     private void finishRun(String payload) {
         CompletableFuture<Integer> future;
+        CompletableFuture<String> capture;
+        String captured;
         synchronized (lock) {
             future = pending;
             pending = null;
+            capture = pendingCapture;
+            pendingCapture = null;
+            captured = captureBuffer == null ? "" : captureBuffer.toString();
+            captureBuffer = null;
             pendingMarker = null;
+        }
+        if (capture != null) {
+            capture.complete(captured);
         }
         if (future == null) {
             return;
@@ -245,6 +268,36 @@ public final class ShellSession implements AutoCloseable {
      * @throws IllegalStateException if the session is closed or already busy
      */
     public CompletableFuture<Integer> run(String script) {
+        return submit(script, null);
+    }
+
+    /**
+     * Runs a script whose output is returned instead of shown.
+     *
+     * <p>This is how the current directory is read back after a command: the
+     * answer is needed for the location bar, but the command that produced it
+     * should not appear in the console.</p>
+     *
+     * @param script the script to run
+     * @return a future carrying the captured output
+     * @throws IllegalStateException if the session is closed or already busy
+     */
+    public CompletableFuture<String> query(String script) {
+        CompletableFuture<String> capture = new CompletableFuture<>();
+        submit(script, capture);
+        return capture;
+    }
+
+    /**
+     * Sends a script to the interpreter.
+     *
+     * @param script  one or more commands, separated by newlines
+     * @param capture when not {@code null}, output is collected for it rather
+     *                than handed to the listener
+     * @return a future carrying the exit code
+     * @throws IllegalStateException if the session is closed or already busy
+     */
+    private CompletableFuture<Integer> submit(String script, CompletableFuture<String> capture) {
         CompletableFuture<Integer> future = new CompletableFuture<>();
         String marker;
         synchronized (lock) {
@@ -257,6 +310,10 @@ public final class ShellSession implements AutoCloseable {
             marker = "#M#" + sessionId + "#" + (++sequence) + "#";
             pendingMarker = marker;
             pending = future;
+            if (capture != null) {
+                pendingCapture = capture;
+                captureBuffer = new StringBuilder();
+            }
         }
         try {
             StringBuilder payload = new StringBuilder();
@@ -275,6 +332,11 @@ public final class ShellSession implements AutoCloseable {
             synchronized (lock) {
                 pending = null;
                 pendingMarker = null;
+                pendingCapture = null;
+                captureBuffer = null;
+            }
+            if (capture != null) {
+                capture.completeExceptionally(e);
             }
             listener.onFailure("Could not write to the interpreter: " + e.getMessage());
             future.completeExceptionally(e);
