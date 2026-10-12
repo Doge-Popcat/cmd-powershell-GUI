@@ -55,6 +55,7 @@ public class MainFrame extends JFrame {
 
     private File workspace = new File(System.getProperty("user.dir"));
     private AppToolBar toolBar;
+    private volatile boolean elevated;
 
     // --- actions -----------------------------------------------------------
 
@@ -141,6 +142,10 @@ public class MainFrame extends JFrame {
             "Choose the working directory (the graphical cd command)",
             KeyStroke.getKeyStroke(KeyEvent.VK_K, InputEvent.CTRL_DOWN_MASK),
             e -> chooseWorkspace());
+
+    private final Action adminAction = action("Administrator",
+            "Restart the application with administrator rights",
+            null, e -> requestAdministratorMode());
 
     private final Action aboutAction = action("About", null, null, e -> showAbout());
 
@@ -267,6 +272,7 @@ public class MainFrame extends JFrame {
         file.add(item(closeTabAction));
         file.addSeparator();
         file.add(item(workspaceAction));
+        file.add(item(adminAction));
         file.addSeparator();
         file.add(item(exitAction));
         bar.add(file);
@@ -892,32 +898,139 @@ public class MainFrame extends JFrame {
      */
     private void detectElevationAsync() {
         Thread thread = new Thread(() -> {
-            boolean elevated = false;
-            Process process = null;
-            try {
-                process = new ProcessBuilder("whoami.exe", "/groups")
-                        .redirectErrorStream(true).start();
-                byte[] bytes;
-                try (java.io.InputStream in = process.getInputStream()) {
-                    bytes = in.readAllBytes();
-                }
-                process.waitFor();
-                String text = new String(bytes, java.nio.charset.StandardCharsets.ISO_8859_1);
-                elevated = text.contains("S-1-16-12288") || text.contains("S-1-16-16384");
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            } catch (Exception e) {
-                // Leave the flag false when the query is unavailable.
-            } finally {
-                if (process != null) {
-                    process.destroyForcibly();
-                }
-            }
-            boolean result = elevated;
-            SwingUtilities.invokeLater(() -> statusBar.setElevated(result));
+            boolean result = queryElevation();
+            SwingUtilities.invokeLater(() -> {
+                elevated = result;
+                statusBar.setElevated(result);
+                adminAction.setEnabled(!result);
+                adminAction.putValue(Action.SHORT_DESCRIPTION, result
+                        ? "Already running with administrator rights"
+                        : "Restart the application with administrator rights");
+            });
         }, "cpgui-elevation");
         thread.setDaemon(true);
         thread.start();
+    }
+
+    /** @return {@code true} when this process holds a high integrity token. */
+    private boolean queryElevation() {
+        Process process = null;
+        try {
+            process = new ProcessBuilder("whoami.exe", "/groups")
+                    .redirectErrorStream(true).start();
+            byte[] bytes;
+            try (java.io.InputStream in = process.getInputStream()) {
+                bytes = in.readAllBytes();
+            }
+            process.waitFor();
+            String text = new String(bytes, java.nio.charset.StandardCharsets.ISO_8859_1);
+            return text.contains("S-1-16-12288") || text.contains("S-1-16-16384");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
+        } catch (Exception e) {
+            return false;
+        } finally {
+            if (process != null) {
+                process.destroyForcibly();
+            }
+        }
+    }
+
+    // --- administrator mode -------------------------------------------------
+
+    /**
+     * Relaunches the application with administrator rights.
+     *
+     * <p>Windows has no way to raise the integrity level of a running process,
+     * so a new elevated copy is started through the {@code runas} verb and this
+     * one exits. Open tabs live in memory only, so unsaved work is offered for
+     * saving first and the user is told that tabs will not be carried over.</p>
+     */
+    public void requestAdministratorMode() {
+        if (elevated) {
+            JOptionPane.showMessageDialog(this,
+                    "This window is already running with administrator rights.",
+                    "Administrator mode", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        for (EditorTab tab : editorTabs.tabs()) {
+            if (!confirmDiscard(tab)) {
+                return;
+            }
+        }
+
+        List<String> command = com.dogepopcat.cpgui.util.CommandLine.currentProcess();
+        if (command.size() < 2) {
+            console.appendError("Could not work out how this program was started, so it cannot "
+                    + "be restarted elevated." + System.lineSeparator());
+            statusBar.setMessage("Administrator restart unavailable");
+            return;
+        }
+
+        int choice = JOptionPane.showConfirmDialog(this,
+                "Windows will ask for permission to start an elevated copy.\n\n"
+                        + "Open tabs are not carried over. This window closes once the "
+                        + "elevated copy has started.\n\nContinue?",
+                "Restart as administrator", JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.QUESTION_MESSAGE);
+        if (choice != JOptionPane.OK_OPTION) {
+            statusBar.setMessage("Administrator restart cancelled");
+            return;
+        }
+
+        String executable = command.get(0);
+        String arguments = String.join(" ", command.subList(1, command.size()));
+        ProcessBuilder builder = new ProcessBuilder("powershell.exe", "-NoProfile",
+                "-NonInteractive", "-Command",
+                "Start-Process -FilePath $env:CPGUI_ELEVATE_EXE"
+                        + " -ArgumentList $env:CPGUI_ELEVATE_ARGS -Verb RunAs");
+        // Passing the values through the environment avoids every quoting rule.
+        builder.environment().put("CPGUI_ELEVATE_EXE", executable);
+        builder.environment().put("CPGUI_ELEVATE_ARGS", arguments);
+        builder.redirectErrorStream(true);
+
+        try {
+            Process process = builder.start();
+            String output = new String(process.getInputStream().readAllBytes(),
+                    com.dogepopcat.cpgui.shell.ConsoleCharset.get());
+            int exit = process.waitFor();
+            if (exit != 0) {
+                console.appendError("Administrator restart failed: "
+                        + output.strip() + System.lineSeparator());
+                statusBar.setMessage("Administrator restart was refused");
+                JOptionPane.showMessageDialog(this,
+                        "The elevated copy could not be started.\n\n"
+                                + "This usually means the permission prompt was dismissed.",
+                        "Administrator mode", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return;
+        } catch (IOException e) {
+            console.appendError("Administrator restart failed: " + e.getMessage()
+                    + System.lineSeparator());
+            statusBar.setMessage("Administrator restart failed");
+            return;
+        }
+
+        console.appendSystem("[starting an elevated copy; closing this window]"
+                + System.lineSeparator());
+        sessions.closeAll();
+        dispose();
+        System.exit(0);
+    }
+
+    /**
+     * Splits a Windows command line, honouring double quotes around the
+     * executable and keeping the remaining arguments as they were written.
+     *
+     * @param commandLine the raw command line
+     * @return the executable followed by the argument string, or an empty list
+     */
+    static List<String> splitCommandLine(String commandLine) {
+        return com.dogepopcat.cpgui.util.CommandLine.split(commandLine);
     }
 
     // --- session events -----------------------------------------------------
@@ -1028,5 +1141,14 @@ public class MainFrame extends JFrame {
 
     public Action workspaceAction() {
         return workspaceAction;
+    }
+
+    public Action adminAction() {
+        return adminAction;
+    }
+
+    /** @return {@code true} when the process holds administrator rights. */
+    public boolean isElevated() {
+        return elevated;
     }
 }
