@@ -68,17 +68,18 @@ public final class GuiDemo {
         boolean powershell = mode.equals("ps");
         boolean danger = mode.equals("danger");
         boolean confirm = mode.equals("confirm");
+        boolean complete = mode.equals("complete");
         String script = powershell ? PS_SCRIPT : (danger || confirm) ? DANGER_SCRIPT : CMD_SCRIPT;
 
         SwingUtilities.invokeLater(() -> {
             MainFrame frame = new MainFrame();
             frame.setVisible(true);
-            if (powershell) {
+            if (powershell || complete) {
                 frame.setActiveShellKind(ShellKind.POWERSHELL);
             }
             EditorTab tab = frame.editorTabs().current();
-            tab.setText(script);
-            tab.textPane().setCaretPosition(0);
+            tab.setText(complete ? "Get-Ch" : script);
+            tab.textPane().setCaretPosition(tab.getText().length());
             if (danger) {
                 tab.diagnostics().refresh();
                 frame.selectBottomTab("Problems");
@@ -87,6 +88,10 @@ public final class GuiDemo {
             if (confirm) {
                 // Opens the real modal warning so it can be inspected.
                 frame.runActiveScript();
+            }
+            if (complete) {
+                // Wait for layout so the popup can be placed at the caret.
+                SwingUtilities.invokeLater(() -> tab.completion().trigger(true));
             }
         });
         Thread.sleep(Long.MAX_VALUE);

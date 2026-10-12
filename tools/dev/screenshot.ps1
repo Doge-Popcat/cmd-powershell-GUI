@@ -67,19 +67,26 @@ public class Win32Shot {
 
     /// Raises every visible window of a process, dialogs included, so a
     /// screenshot cannot end up showing whatever happened to be in front.
+    /// EnumWindows walks from the top of the Z order downwards, so the windows
+    /// are re-applied in reverse: that keeps popups above the frame they belong
+    /// to instead of burying them.
     public static int BringToFront(int pid) {
-        int raised = 0;
+        System.Collections.Generic.List<IntPtr> found = new System.Collections.Generic.List<IntPtr>();
         EnumWindows((h, p) => {
             uint owner;
             GetWindowThreadProcessId(h, out owner);
             if (owner == (uint)p && IsWindowVisible(h)) {
-                SetWindowPos(h, TOPMOST, 0, 0, 0, 0, NOMOVE_NOSIZE_SHOW);
-                SetForegroundWindow(h);
-                raised++;
+                found.Add(h);
             }
             return true;
         }, new IntPtr(pid));
-        return raised;
+        for (int i = found.Count - 1; i >= 0; i--) {
+            SetWindowPos(found[i], TOPMOST, 0, 0, 0, 0, NOMOVE_NOSIZE_SHOW);
+        }
+        if (found.Count > 0) {
+            SetForegroundWindow(found[0]);
+        }
+        return found.Count;
     }
 }
 "@

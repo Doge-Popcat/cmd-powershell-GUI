@@ -43,6 +43,7 @@ public class EditorTab extends JPanel {
     private final UndoManager undo = new UndoManager();
     private final SyntaxHighlighter highlighter;
     private final DiagnosticsOverlay diagnostics;
+    private final CompletionController completion;
 
     private ShellKind shellKind;
     private File file;
@@ -97,6 +98,7 @@ public class EditorTab extends JPanel {
 
         highlighter = new SyntaxHighlighter(this);
         diagnostics = new DiagnosticsOverlay(this);
+        completion = new CompletionController(this);
     }
 
     private void installUndoRedo() {
@@ -287,6 +289,11 @@ public class EditorTab extends JPanel {
     /** @return the diagnostics overlay analysing this tab. */
     public DiagnosticsOverlay diagnostics() {
         return diagnostics;
+    }
+
+    /** @return the IntelliSense controller driving this tab's popup. */
+    public CompletionController completion() {
+        return completion;
     }
 
     /** @return the tab title, prefixed with {@code *} when unsaved. */
