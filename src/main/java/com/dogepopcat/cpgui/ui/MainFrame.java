@@ -9,6 +9,7 @@ import com.dogepopcat.cpgui.i18n.Language;
 import com.dogepopcat.cpgui.i18n.Messages;
 import com.dogepopcat.cpgui.i18n.Msg;
 import com.dogepopcat.cpgui.io.WorkspacePolicy;
+import com.dogepopcat.cpgui.shell.ConsolePalette;
 import com.dogepopcat.cpgui.shell.SessionRegistry;
 import com.dogepopcat.cpgui.shell.ShellKind;
 import com.dogepopcat.cpgui.shell.ShellSession;
@@ -336,6 +337,9 @@ public class MainFrame extends JFrame {
                 + "<br>" + Msg.ABOUT_CODEPAGE.format(
                         com.dogepopcat.cpgui.shell.ConsoleCharset.get().name())
                 + "<br>" + Msg.ABOUT_LICENSE.text() + "</html>";
+        panel.add(new JLabel(html), BorderLayout.CENTER);
+        JOptionPane.showMessageDialog(this, panel, Msg.ABOUT_TITLE.format(AppInfo.NAME),
+                JOptionPane.INFORMATION_MESSAGE);
     }
 
     // --- menu ---------------------------------------------------------------
@@ -766,6 +770,11 @@ public class MainFrame extends JFrame {
         // The running interpreter cannot change, so start a fresh session.
         sessions.release(tab);
         statusBar.setShell(kind);
+        // The prompt is the only visible sign of the switch, so update it at once
+        // and say so in the console instead of waiting for the next command.
+        console.setPrompt(promptName(kind) + ">");
+        console.appendSystem(Msg.STATUS_INTERPRETER_SWITCHED.format(kind.displayName())
+                + System.lineSeparator());
         statusBar.setMessage(Msg.STATUS_INTERPRETER_SWITCHED.format(kind.description()));
     }
 
@@ -877,10 +886,60 @@ public class MainFrame extends JFrame {
         return count;
     }
 
+    // --- console commands handled by the application ------------------------
+
+    /**
+     * Handles the handful of commands that only make sense against a real
+     * console window.
+     *
+     * <p>{@code cls} and {@code color} act on the console screen buffer. Output
+     * here is captured through a pipe, so the interpreter has no buffer to act
+     * on and both would fail silently; the application owns the surface the user
+     * is looking at, so it performs them instead.</p>
+     *
+     * @param tab    the active tab
+     * @param script the text about to be submitted
+     * @return {@code true} when the command was handled and must not be sent on
+     */
+    private boolean runConsoleCommand(EditorTab tab, String script) {
+        String trimmed = script.strip();
+        if (trimmed.contains("\n") || tab.shellKind() != ShellKind.CMD) {
+            return false;
+        }
+        if (trimmed.equalsIgnoreCase("cls")) {
+            console.clear();
+            console.appendSystem("[console cleared]" + System.lineSeparator());
+            statusBar.setMessage(Msg.STATUS_CONSOLE_CLEARED.text());
+            return true;
+        }
+        if (trimmed.toLowerCase(java.util.Locale.ROOT).startsWith("color")
+                && (trimmed.length() == 5 || Character.isWhitespace(trimmed.charAt(5)))) {
+            String argument = trimmed.length() <= 5 ? "" : trimmed.substring(5).strip();
+            java.util.Optional<java.awt.Color[]> palette = ConsolePalette.parse(
+                    argument, new java.awt.Color[]{console.paletteBackground(),
+                            console.paletteForeground()});
+            if (palette.isEmpty()) {
+                console.appendError(Msg.STATUS_BAD_COLOUR.format(argument)
+                        + System.lineSeparator());
+                statusBar.setMessage(Msg.STATUS_BAD_COLOUR.format(argument));
+                return true;
+            }
+            java.awt.Color[] colours = palette.get();
+            console.setPalette(colours[0], colours[1]);
+            statusBar.setMessage(Msg.STATUS_CONSOLE_COLOUR.format(
+                    argument.isEmpty() ? Msg.STATUS_COLOUR_DEFAULT.text() : argument));
+            return true;
+        }
+        return false;
+    }
+
     /** Sends a script to the active tab's interpreter. */
     private void execute(EditorTab tab, String script) {
         if (script == null || script.isBlank()) {
             statusBar.setMessage(Msg.STATUS_NOTHING_TO_RUN.text());
+            return;
+        }
+        if (runConsoleCommand(tab, script)) {
             return;
         }
 
@@ -1387,6 +1446,11 @@ public class MainFrame extends JFrame {
     /** @return the bar showing the current working directory. */
     public LocationBar locationBar() {
         return locationBar;
+    }
+
+    /** @return the main tool bar, exposed for tests. */
+    public AppToolBar toolBar() {
+        return toolBar;
     }
 
     public Action newTabAction() {

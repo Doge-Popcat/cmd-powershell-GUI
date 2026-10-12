@@ -301,24 +301,32 @@ public final class DangerAnalyzer {
 
     /**
      * @param text one command
-     * @return its first word, or {@code null} when it does not look like a plain
-     *         command name
+     * @return its command name, or {@code null} when the command does not start
+     *         with a plain name
      */
     private static String firstWord(String text) {
         String stripped = text.stripLeading();
+        // A leading "@" is the cmd "do not echo this line" prefix.
+        if (stripped.startsWith("@")) {
+            stripped = stripped.substring(1).stripLeading();
+        }
+        // Take the leading run of name characters. Punctuation that follows a
+        // command name belongs to the shell, so "exyzxo[]()" must still be
+        // reported as the unknown command "exyzxo" rather than being skipped.
         int end = 0;
-        while (end < stripped.length() && !Character.isWhitespace(stripped.charAt(end))) {
+        while (end < stripped.length() && isNameCharacter(stripped.charAt(end))) {
             end++;
         }
         String token = stripped.substring(0, end);
-        if (token.contains("=") || token.startsWith("@")) {
-            // "set X=1" style assignments and "@echo" prefixes.
-            token = token.startsWith("@") ? token.substring(1) : token;
-        }
-        if (token.isBlank() || token.contains("=")) {
+        if (token.length() < 2 || token.contains("=")) {
             return null;
         }
         return token;
+    }
+
+    /** @return {@code true} for the characters a bare command name may contain. */
+    private static boolean isNameCharacter(char c) {
+        return Character.isLetterOrDigit(c) || c == '-' || c == '_';
     }
 
     /**

@@ -170,6 +170,11 @@ public class ConsolePane extends JPanel {
         prompt.setText(value == null || value.isBlank() ? ">" : value);
     }
 
+    /** @return the prompt currently shown before the input field. */
+    public String promptText() {
+        return prompt.getText();
+    }
+
     /**
      * Changes the console font, applying it to the output and the input line.
      *
@@ -197,6 +202,37 @@ public class ConsolePane extends JPanel {
     /** @return the console input field, exposed for tests. */
     public JTextField inputField() {
         return input;
+    }
+
+    /**
+     * Recolours the console, so {@code color} typed at the prompt has a visible
+     * effect even though the interpreter cannot change a captured console.
+     *
+     * @param background the new background
+     * @param foreground the new default text colour
+     */
+    public void setPalette(Color background, Color foreground) {
+        SwingUtilities.invokeLater(() -> {
+            text.setBackground(background);
+            text.setForeground(foreground);
+            text.setCaretColor(foreground);
+            scroll.getViewport().setBackground(background);
+            input.setBackground(background);
+            input.setForeground(foreground);
+            input.setCaretColor(foreground);
+            prompt.setForeground(foreground);
+            repaint();
+        });
+    }
+
+    /** @return the colour console output is currently drawn in. */
+    public Color paletteForeground() {
+        return text.getForeground();
+    }
+
+    /** @return the colour the console is currently drawn on. */
+    public Color paletteBackground() {
+        return text.getBackground();
     }
 
     /**
