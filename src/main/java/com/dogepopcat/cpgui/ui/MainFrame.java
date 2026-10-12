@@ -4,6 +4,7 @@ import com.dogepopcat.cpgui.AppInfo;
 import com.dogepopcat.cpgui.analysis.DangerAnalyzer;
 import com.dogepopcat.cpgui.analysis.DangerAnalyzer.Finding;
 import com.dogepopcat.cpgui.analysis.ScriptParser;
+import com.dogepopcat.cpgui.io.ScriptFile;
 import com.dogepopcat.cpgui.shell.SessionRegistry;
 import com.dogepopcat.cpgui.shell.ShellKind;
 import com.dogepopcat.cpgui.shell.ShellSession;
@@ -64,6 +65,19 @@ public class MainFrame extends JFrame {
     private final Action closeTabAction = action("Close Tab", "Close the active script tab",
             KeyStroke.getKeyStroke(KeyEvent.VK_W, InputEvent.CTRL_DOWN_MASK),
             e -> closeTab(editorTabs.getSelectedIndex()));
+
+    private final Action openAction = action("Open\u2026", "Open a .cmd, .bat or .ps1 script",
+            KeyStroke.getKeyStroke(KeyEvent.VK_O, InputEvent.CTRL_DOWN_MASK),
+            e -> openScript());
+
+    private final Action saveAction = action("Save", "Save the active script (Ctrl+S)",
+            KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK),
+            e -> saveActiveScript());
+
+    private final Action saveAsAction = action("Save As\u2026", "Save the active script under a new name",
+            KeyStroke.getKeyStroke(KeyEvent.VK_S,
+                    InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK),
+            e -> saveActiveScriptAs());
 
     private final Action exitAction = action("Exit", "Quit the application", null,
             e -> dispatchClose());
@@ -245,6 +259,11 @@ public class MainFrame extends JFrame {
         JMenu file = new JMenu("File");
         file.setMnemonic('F');
         file.add(item(newTabAction));
+        file.add(item(openAction));
+        file.addSeparator();
+        file.add(item(saveAction));
+        file.add(item(saveAsAction));
+        file.addSeparator();
         file.add(item(closeTabAction));
         file.addSeparator();
         file.add(item(workspaceAction));
@@ -335,9 +354,18 @@ public class MainFrame extends JFrame {
         tab.textPane().requestFocusInWindow();
     }
 
-    /** Closes the tab at {@code index}, releasing its interpreter session. */
+    /**
+     * Closes the tab at {@code index}, releasing its interpreter session.
+     *
+     * <p>Unsaved changes are offered for saving first, and cancelling that
+     * prompt leaves the tab open.</p>
+     */
     public void closeTab(int index) {
         if (index < 0 || index >= editorTabs.tabCount()) {
+            return;
+        }
+        EditorTab tab = editorTabs.tabs().get(index);
+        if (!confirmDiscard(tab)) {
             return;
         }
         EditorTab removed = editorTabs.closeTab(index);
@@ -348,6 +376,186 @@ public class MainFrame extends JFrame {
             createTab(ShellKind.CMD);
         }
         statusBar.setMessage("Tab closed");
+    }
+
+    // --- file operations ----------------------------------------------------
+
+    /** Asks the user for a script and opens it in a new tab. */
+    public void openScript() {
+        javax.swing.JFileChooser chooser = scriptChooser("Open script");
+        if (chooser.showOpenDialog(this) != javax.swing.JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        File file = chooser.getSelectedFile();
+        if (file == null || !file.isFile()) {
+            return;
+        }
+        openFile(file);
+    }
+
+    /**
+     * Loads a file into a new tab.
+     *
+     * @param file the script to read
+     * @return the new tab, or {@code null} when reading failed
+     */
+    public EditorTab openFile(File file) {
+        String content;
+        try {
+            content = ScriptFile.read(file);
+        } catch (IOException e) {
+            console.appendError("Could not read " + file + ": " + e.getMessage()
+                    + System.lineSeparator());
+            statusBar.setMessage("Could not open " + file.getName());
+            return null;
+        }
+        EditorTab tab = createTab(ScriptFile.shellKindFor(file));
+        tab.setFile(file);
+        tab.setText(content);
+        tab.clearDirty();
+        editorTabs.refreshTitles();
+        statusBar.setMessage("Opened " + file.getName());
+        return tab;
+    }
+
+    /** Saves the active tab, asking for a name when it has none yet. */
+    public boolean saveActiveScript() {
+        EditorTab tab = editorTabs.current();
+        return tab != null && saveTab(tab, tab.file());
+    }
+
+    /** Saves the active tab under a new name. */
+    public boolean saveActiveScriptAs() {
+        EditorTab tab = editorTabs.current();
+        return tab != null && saveTabAs(tab);
+    }
+
+    /**
+     * Saves a tab to a specific file, or asks for one when {@code target} is
+     * {@code null}.
+     *
+     * @return {@code true} when the file was written
+     */
+    public boolean saveTab(EditorTab tab, File target) {
+        if (target == null) {
+            return saveTabAs(tab);
+        }
+        try {
+            ScriptFile.write(target, tab.getText(), tab.shellKind());
+        } catch (ScriptFile.UnrepresentableCharactersException lossy) {
+            if (!confirmLossySave(target, lossy)) {
+                statusBar.setMessage("Save cancelled");
+                return false;
+            }
+            try {
+                ScriptFile.writeLossy(target, tab.getText(), tab.shellKind());
+            } catch (IOException e) {
+                return reportSaveFailure(target, e);
+            }
+        } catch (IOException e) {
+            return reportSaveFailure(target, e);
+        }
+        tab.setFile(target);
+        tab.clearDirty();
+        editorTabs.refreshTitles();
+        statusBar.setMessage("Saved " + target.getName()
+                + " (" + ScriptFile.writeCharset(tab.shellKind()).name() + ")");
+        return true;
+    }
+
+    private boolean reportSaveFailure(File target, IOException e) {
+        console.appendError("Could not save " + target + ": " + e.getMessage()
+                + System.lineSeparator());
+        statusBar.setMessage("Could not save " + target.getName());
+        JOptionPane.showMessageDialog(this,
+                "Could not save the file:\n" + e.getMessage(),
+                "Save failed", JOptionPane.ERROR_MESSAGE);
+        return false;
+    }
+
+    /**
+     * Warns that the console code page cannot hold part of the script.
+     *
+     * <p>Silently replacing characters with {@code ?} would corrupt the script
+     * without the user noticing, so the choice is theirs.</p>
+     */
+    private boolean confirmLossySave(File target, ScriptFile.UnrepresentableCharactersException e) {
+        String message = "These characters cannot be written in " + e.charset().name()
+                + ", which is the code page cmd.exe reads batch files with:\n\n    "
+                + e.characters()
+                + "\n\nSaving will replace them with '?'. "
+                + "Save the script as PowerShell (.ps1) to keep them.\n\nSave anyway?";
+        int choice = JOptionPane.showConfirmDialog(this, message,
+                "Some characters cannot be saved", JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        return choice == JOptionPane.YES_OPTION;
+    }
+
+    /** Asks for a destination and saves the tab there. */
+    public boolean saveTabAs(EditorTab tab) {
+        javax.swing.JFileChooser chooser = scriptChooser("Save script as");
+        chooser.setSelectedFile(new File(workspace, defaultNameFor(tab)));
+        if (chooser.showSaveDialog(this) != javax.swing.JFileChooser.APPROVE_OPTION) {
+            return false;
+        }
+        File target = ensureExtension(chooser.getSelectedFile(), tab.shellKind());
+        if (target.exists() && JOptionPane.showConfirmDialog(this,
+                target.getName() + " already exists.\nReplace it?",
+                "Confirm save as", JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE) != JOptionPane.YES_OPTION) {
+            return false;
+        }
+        return saveTab(tab, target);
+    }
+
+    private String defaultNameFor(EditorTab tab) {
+        return tab.file() != null ? tab.file().getName()
+                : ScriptFile.defaultFileName(tab.shellKind());
+    }
+
+    /** Adds the interpreter's extension when the user did not type one. */
+    private File ensureExtension(File file, ShellKind kind) {
+        String name = file.getName();
+        if (name.indexOf('.') >= 0) {
+            return file;
+        }
+        return new File(file.getParentFile(), name + "." + kind.fileExtension());
+    }
+
+    private javax.swing.JFileChooser scriptChooser(String title) {
+        javax.swing.JFileChooser chooser = new javax.swing.JFileChooser(workspace);
+        chooser.setDialogTitle(title);
+        chooser.setAcceptAllFileFilterUsed(true);
+        chooser.addChoosableFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                "Batch scripts (*.cmd, *.bat)", "cmd", "bat"));
+        chooser.addChoosableFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                "PowerShell scripts (*.ps1)", "ps1"));
+        chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                "All scripts (*.cmd, *.bat, *.ps1)", "cmd", "bat", "ps1"));
+        return chooser;
+    }
+
+    /**
+     * Offers to save a tab that has unsaved changes.
+     *
+     * @return {@code true} when it is safe to discard the tab
+     */
+    private boolean confirmDiscard(EditorTab tab) {
+        if (tab == null || !tab.isDirty()) {
+            return true;
+        }
+        String name = tab.file() != null ? tab.file().getName() : tab.title();
+        int choice = JOptionPane.showConfirmDialog(this,
+                "Save changes to " + name + "?",
+                "Unsaved changes", JOptionPane.YES_NO_CANCEL_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        if (choice == JOptionPane.CANCEL_OPTION || choice == JOptionPane.CLOSED_OPTION) {
+            return false;
+        }
+        if (choice == JOptionPane.NO_OPTION) {
+            return true;
+        }
+        return saveTab(tab, tab.file());
     }
 
     private void activeTabChanged() {
@@ -665,6 +873,11 @@ public class MainFrame extends JFrame {
     }
 
     private void dispatchClose() {
+        for (EditorTab tab : editorTabs.tabs()) {
+            if (!confirmDiscard(tab)) {
+                return;
+            }
+        }
         sessions.closeAll();
         dispose();
         System.exit(0);
@@ -795,6 +1008,14 @@ public class MainFrame extends JFrame {
 
     public Action newTabAction() {
         return newTabAction;
+    }
+
+    public Action openAction() {
+        return openAction;
+    }
+
+    public Action saveAction() {
+        return saveAction;
     }
 
     public Action runAction() {

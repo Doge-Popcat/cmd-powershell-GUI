@@ -35,6 +35,8 @@ public class AppToolBar extends JToolBar {
                 BorderFactory.createEmptyBorder(3, 6, 3, 6)));
 
         add(button(frame.newTabAction()));
+        add(button(frame.openAction()));
+        add(button(frame.saveAction()));
         addSeparator(new Dimension(10, 0));
 
         add(button(frame.runAction()));

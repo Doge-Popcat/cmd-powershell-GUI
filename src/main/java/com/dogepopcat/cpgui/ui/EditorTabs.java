@@ -98,12 +98,16 @@ public class EditorTabs extends JTabbedPane {
     }
 
     /** Recomputes every tab title, which is how the dirty marker is refreshed. */
-    private void refreshHeaders() {
+    public void refreshTitles() {
         for (int i = 0; i < tabs.size(); i++) {
             if (getTabComponentAt(i) instanceof TabHeader header) {
                 header.refresh();
             }
         }
+    }
+
+    private void refreshHeaders() {
+        refreshTitles();
     }
 
     /** Header widget: title label plus a close button. */
