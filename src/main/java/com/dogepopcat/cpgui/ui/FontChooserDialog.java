@@ -1,5 +1,7 @@
 package com.dogepopcat.cpgui.ui;
 
+import com.dogepopcat.cpgui.i18n.Msg;
+
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.JButton;
@@ -40,18 +42,17 @@ public final class FontChooserDialog extends JDialog {
 
     /** Which surface the chosen font applies to. */
     public enum Target {
-        EDITOR("Editor"),
-        CONSOLE("Console");
+        EDITOR,
+        CONSOLE;
 
-        private final String label;
-
-        Target(String label) {
-            this.label = label;
+        /** @return the name of this surface in the current language. */
+        public String label() {
+            return this == EDITOR ? Msg.FONTS_EDITOR.text() : Msg.FONTS_CONSOLE.text();
         }
 
         @Override
         public String toString() {
-            return label;
+            return label();
         }
     }
 
@@ -59,13 +60,13 @@ public final class FontChooserDialog extends JDialog {
     public record Result(Target target, Font font) {
     }
 
-    private static final String[] STYLES = {"Plain", "Bold", "Italic", "Bold Italic"};
+    private static final String[] STYLES = {"PLAIN", "BOLD", "ITALIC", "BOLD_ITALIC"};
     private static final String PREVIEW_TEXT =
             "dir /b /a  |  Get-ChildItem -Recurse  |  中文示例 0123456789";
 
     private final JComboBox<Target> target = new JComboBox<>(Target.values());
     private final JComboBox<String> family = new JComboBox<>();
-    private final JComboBox<String> style = new JComboBox<>(STYLES);
+    private final JComboBox<String> style = new JComboBox<>();
     private final SpinnerNumberModel sizeModel = new SpinnerNumberModel(13, 8, 48, 1);
     private final JSpinner size = new JSpinner(sizeModel);
     private final JLabel preview = new JLabel(PREVIEW_TEXT);
@@ -73,12 +74,13 @@ public final class FontChooserDialog extends JDialog {
     private Result result;
 
     private FontChooserDialog(Window owner, Target initialTarget, Font initial) {
-        super(owner, "Fonts", ModalityType.APPLICATION_MODAL);
+        super(owner, Msg.FONTS_TITLE.text(), ModalityType.APPLICATION_MODAL);
         buildUi();
         fillFamilies(initial);
+        fillStyles();
         target.setSelectedItem(initialTarget);
         sizeModel.setValue(initial.getSize());
-        style.setSelectedItem(styleName(initial));
+        style.setSelectedIndex(styleIndex(initial));
         updatePreview();
         pack();
         setLocationRelativeTo(owner);
@@ -107,7 +109,7 @@ public final class FontChooserDialog extends JDialog {
 
         constraints.gridx = 0;
         constraints.gridy = 0;
-        form.add(new JLabel("Apply to:"), constraints);
+        form.add(new JLabel(Msg.FONTS_TARGET.text()), constraints);
         constraints.gridx = 1;
         constraints.gridwidth = 2;
         constraints.fill = GridBagConstraints.HORIZONTAL;
@@ -117,7 +119,7 @@ public final class FontChooserDialog extends JDialog {
         constraints.gridx = 0;
         constraints.gridwidth = 1;
         constraints.fill = GridBagConstraints.NONE;
-        form.add(new JLabel("Font:"), constraints);
+        form.add(new JLabel(Msg.FONTS_FAMILY.text()), constraints);
         constraints.gridx = 1;
         constraints.gridwidth = 2;
         constraints.fill = GridBagConstraints.HORIZONTAL;
@@ -128,7 +130,7 @@ public final class FontChooserDialog extends JDialog {
         constraints.gridx = 0;
         constraints.gridwidth = 1;
         constraints.fill = GridBagConstraints.NONE;
-        form.add(new JLabel("Style:"), constraints);
+        form.add(new JLabel(Msg.FONTS_STYLE.text()), constraints);
         constraints.gridx = 1;
         constraints.fill = GridBagConstraints.HORIZONTAL;
         form.add(style, constraints);
@@ -136,7 +138,7 @@ public final class FontChooserDialog extends JDialog {
         constraints.gridy = 3;
         constraints.gridx = 0;
         constraints.fill = GridBagConstraints.NONE;
-        form.add(new JLabel("Size:"), constraints);
+        form.add(new JLabel(Msg.FONTS_SIZE.text()), constraints);
         constraints.gridx = 1;
         constraints.fill = GridBagConstraints.HORIZONTAL;
         form.add(size, constraints);
@@ -153,8 +155,8 @@ public final class FontChooserDialog extends JDialog {
         previewRow.setBorder(BorderFactory.createEmptyBorder(0, 12, 6, 12));
         previewRow.add(preview, BorderLayout.CENTER);
 
-        JButton ok = new JButton("OK");
-        JButton cancel = new JButton("Cancel");
+        JButton ok = new JButton(Msg.OK.text());
+        JButton cancel = new JButton(Msg.CANCEL.text());
         ok.addActionListener(e -> {
             result = new Result((Target) target.getSelectedItem(), currentFont());
             dispose();
@@ -239,29 +241,44 @@ public final class FontChooserDialog extends JDialog {
         }
     }
 
-    private static String styleName(Font font) {
-        int style = font.getStyle();
-        if (font.isBold() && font.isItalic()) {
-            return STYLES[3];
-        }
-        if (font.isBold()) {
-            return STYLES[1];
-        }
-        if (font.isItalic()) {
-            return STYLES[2];
-        }
-        return STYLES[0];
+    /** @return the translated name of a style constant. */
+    private static String styleLabel(String key) {
+        return Msg.valueOf("FONTS_STYLE_" + key).text();
     }
 
-    private static int styleValue(String name) {
-        if (STYLES[3].equals(name)) {
-            return Font.BOLD | Font.ITALIC;
+    /** Fills the style combo with translated names. */
+    private void fillStyles() {
+        for (String key : STYLES) {
+            style.addItem(styleLabel(key));
         }
-        if (STYLES[1].equals(name)) {
-            return Font.BOLD;
+        style.setSelectedIndex(0);
+    }
+
+    /** @return the index into {@link #STYLES} matching a font, or 0. */
+    private static int styleIndex(Font font) {
+        int style = font.getStyle();
+        if (font.isBold() && font.isItalic()) {
+            return 3;
         }
-        if (STYLES[2].equals(name)) {
-            return Font.ITALIC;
+        if (font.isBold()) {
+            return 1;
+        }
+        if (font.isItalic()) {
+            return 2;
+        }
+        return 0;
+    }
+
+    private static int styleValue(String label) {
+        for (int i = 0; i < STYLES.length; i++) {
+            if (styleLabel(STYLES[i]).equals(label)) {
+                return switch (i) {
+                    case 3 -> Font.BOLD | Font.ITALIC;
+                    case 1 -> Font.BOLD;
+                    case 2 -> Font.ITALIC;
+                    default -> Font.PLAIN;
+                };
+            }
         }
         return Font.PLAIN;
     }

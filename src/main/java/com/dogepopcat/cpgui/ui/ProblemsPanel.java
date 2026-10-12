@@ -1,6 +1,8 @@
 package com.dogepopcat.cpgui.ui;
 
 import com.dogepopcat.cpgui.analysis.DangerAnalyzer.Finding;
+import com.dogepopcat.cpgui.i18n.Messages;
+import com.dogepopcat.cpgui.i18n.Msg;
 import com.dogepopcat.cpgui.analysis.DangerAnalyzer.Severity;
 
 import javax.swing.BorderFactory;
@@ -32,11 +34,12 @@ public class ProblemsPanel extends JPanel {
 
     private static final long serialVersionUID = 1L;
 
-    private static final String[] COLUMNS = {"", "Line", "Problem", "Suggestion"};
+    private static final String[] COLUMN_KEYS = {"", "COLUMN_LINE", "COLUMN_PROBLEM",
+            "COLUMN_SUGGESTION"};
 
     private final Model model = new Model();
     private final JTable table = new JTable(model);
-    private final JLabel summary = new JLabel("No problems detected");
+    private final JLabel summary = new JLabel();
     private IntConsumer lineNavigator = line -> { };
 
     public ProblemsPanel() {
@@ -75,6 +78,20 @@ public class ProblemsPanel extends JPanel {
         scroll.setBorder(BorderFactory.createEmptyBorder());
         add(scroll, BorderLayout.CENTER);
         add(summary, BorderLayout.SOUTH);
+
+        Messages.addListener(language -> refreshText());
+        refreshText();
+    }
+
+    /** Re-applies the column headers and summary after a language change. */
+    private void refreshText() {
+        for (int i = 0; i < COLUMN_KEYS.length; i++) {
+            String key = COLUMN_KEYS[i];
+            table.getColumnModel().getColumn(i).setHeaderValue(
+                    key.isEmpty() ? "" : Msg.valueOf(key).text());
+        }
+        table.getTableHeader().repaint();
+        setFindings(model.findings());
     }
 
     /** Registers the callback that moves the editor caret to a line. */
@@ -98,7 +115,7 @@ public class ProblemsPanel extends JPanel {
 
     private String summarise(List<Finding> findings) {
         if (findings.isEmpty()) {
-            return "No problems detected";
+            return Msg.NO_PROBLEMS.text();
         }
         int errors = 0;
         int warnings = 0;
@@ -110,12 +127,11 @@ public class ProblemsPanel extends JPanel {
                 default -> infos++;
             }
         }
-        StringBuilder text = new StringBuilder();
-        text.append(findings.size()).append(findings.size() == 1 ? " problem" : " problems");
-        text.append(" \u2014 ").append(errors).append(" dangerous");
-        text.append(", ").append(warnings).append(" risky");
+        StringBuilder text = new StringBuilder(findings.size() == 1
+                ? Msg.PROBLEMS_COUNT_ONE.format(errors, warnings)
+                : Msg.PROBLEMS_COUNT.format(findings.size(), errors, warnings));
         if (infos > 0) {
-            text.append(", ").append(infos).append(" noted");
+            text.append(Msg.PROBLEMS_NOTED.format(infos));
         }
         return text.toString();
     }
@@ -169,6 +185,10 @@ public class ProblemsPanel extends JPanel {
             return findings.get(row);
         }
 
+        List<Finding> findings() {
+            return List.copyOf(findings);
+        }
+
         @Override
         public int getRowCount() {
             return findings.size();
@@ -176,12 +196,13 @@ public class ProblemsPanel extends JPanel {
 
         @Override
         public int getColumnCount() {
-            return COLUMNS.length;
+            return COLUMN_KEYS.length;
         }
 
         @Override
         public String getColumnName(int column) {
-            return COLUMNS[column];
+            String key = COLUMN_KEYS[column];
+            return key.isEmpty() ? "" : Msg.valueOf(key).text();
         }
 
         @Override

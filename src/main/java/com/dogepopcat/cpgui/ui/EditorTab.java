@@ -1,5 +1,7 @@
 package com.dogepopcat.cpgui.ui;
 
+import com.dogepopcat.cpgui.i18n.Msg;
+
 import com.dogepopcat.cpgui.shell.ShellKind;
 
 import javax.swing.AbstractAction;
@@ -48,7 +50,7 @@ public class EditorTab extends JPanel {
 
     private ShellKind shellKind;
     private File file;
-    private String displayName = "Untitled";
+    private String displayName;
     private boolean dirty;
     private Runnable dirtyListener = () -> { };
     private boolean loading;
@@ -252,7 +254,8 @@ public class EditorTab extends JPanel {
 
     /** Sets the name shown on the tab while no file is associated yet. */
     public void setDisplayName(String displayName) {
-        this.displayName = displayName == null || displayName.isBlank() ? "Untitled" : displayName;
+        this.displayName = displayName == null || displayName.isBlank()
+                ? Msg.TAB_UNTITLED.text() : displayName;
     }
 
     public boolean isDirty() {
@@ -323,7 +326,8 @@ public class EditorTab extends JPanel {
 
     /** @return the tab title, prefixed with {@code *} when unsaved. */
     public String title() {
-        String name = file != null ? file.getName() : displayName;
+        String name = file != null ? file.getName()
+                : (displayName == null ? Msg.TAB_UNTITLED.text() : displayName);
         return dirty ? "*" + name : name;
     }
 }

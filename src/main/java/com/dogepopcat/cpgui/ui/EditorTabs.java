@@ -1,5 +1,7 @@
 package com.dogepopcat.cpgui.ui;
 
+import com.dogepopcat.cpgui.i18n.Msg;
+
 import com.dogepopcat.cpgui.shell.ShellKind;
 
 import javax.swing.BorderFactory;
@@ -48,7 +50,7 @@ public class EditorTabs extends JTabbedPane {
     public EditorTab newTab(ShellKind shellKind) {
         untitledCounter++;
         EditorTab tab = new EditorTab(shellKind);
-        tab.setDisplayName("Untitled " + untitledCounter);
+        tab.setDisplayName(Msg.TAB_UNTITLED_N.format(untitledCounter));
         tab.setDirtyListener(this::refreshHeaders);
         tabs.add(tab);
         addTab("Untitled " + untitledCounter, tab);
@@ -138,7 +140,7 @@ public class EditorTabs extends JTabbedPane {
             close.setBorderPainted(false);
             close.setContentAreaFilled(false);
             close.setFocusable(false);
-            close.setToolTipText("Close tab");
+            close.setToolTipText(Msg.TAB_CLOSE_TIP.text());
             close.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             close.addActionListener(e -> closeRequested());
             close.addMouseListener(new MouseAdapter() {
@@ -196,7 +198,7 @@ public class EditorTabs extends JTabbedPane {
         void refresh() {
             label.setText(tab.title());
             label.setToolTipText(tab.file() == null
-                    ? "Unsaved script"
+                    ? Msg.TAB_UNSAVED_SCRIPT.text()
                     : tab.file().getAbsolutePath());
             label.setForeground(tab.isDirty() ? Theme.WARNING : defaultForeground);
             setToolTipText(tab.shellKind().description());

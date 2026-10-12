@@ -106,7 +106,7 @@ public final class GuiDemo {
             tab.textPane().setCaretPosition(tab.getText().length());
             if (danger || typo) {
                 tab.diagnostics().refresh();
-                frame.selectBottomTab("Problems");
+                frame.selectBottomTab(MainFrame.BottomTab.PROBLEMS);
             }
             frame.statusBar().setMessage("Demo \u2014 " + tab.shellKind().displayName());
             if (confirm) {
@@ -120,7 +120,7 @@ public final class GuiDemo {
             if (consoleMode) {
                 // Type at the console prompt so the screenshot shows a real run.
                 javax.swing.Timer timer = new javax.swing.Timer(700, e -> {
-                    frame.selectBottomTab("Output");
+                    frame.selectBottomTab(MainFrame.BottomTab.OUTPUT);
                     frame.console().inputField().setText("echo console prompt works");
                     frame.console().inputField().postActionEvent();
                 });

@@ -1,0 +1,436 @@
+package com.dogepopcat.cpgui.i18n;
+
+/**
+ * Every piece of text the application itself shows, in both languages.
+ *
+ * <p>Keeping the translations in one enum rather than in property files means a
+ * missing string is a compile error, and it keeps the two versions next to each
+ * other so they cannot drift apart unnoticed.</p>
+ */
+public enum Msg {
+
+    // --- general -----------------------------------------------------------
+    OK("OK", "确定"),
+    CANCEL("Cancel", "\u53d6\u6d88"),
+    RUN_ANYWAY("Run anyway", "\u4ecd\u7136\u8fd0\u884c"),
+    CLOSE("Close", "\u5173\u95ed"),
+
+    // --- menus -------------------------------------------------------------
+    MENU_FILE("File", "\u6587\u4ef6"),
+    MENU_EDIT("Edit", "\u7f16\u8f91"),
+    MENU_RUN("Run", "\u8fd0\u884c"),
+    MENU_VIEW("View", "\u89c6\u56fe"),
+    MENU_HELP("Help", "\u5e2e\u52a9"),
+    MENU_LANGUAGE("Language", "\u8bed\u8a00"),
+
+    // --- actions -----------------------------------------------------------
+    ACTION_NEW_TAB("New Tab", "\u65b0\u5efa\u6807\u7b7e\u9875"),
+    ACTION_OPEN("Open\u2026", "\u6253\u5f00\u2026"),
+    ACTION_SAVE("Save", "\u4fdd\u5b58"),
+    ACTION_SAVE_AS("Save As\u2026", "\u53e6\u5b58\u4e3a\u2026"),
+    ACTION_CLOSE_TAB("Close Tab", "\u5173\u95ed\u6807\u7b7e\u9875"),
+    ACTION_WORKSPACE("Workspace\u2026", "\u5de5\u4f5c\u533a\u2026"),
+    ACTION_ADMIN("Administrator", "\u7ba1\u7406\u5458\u6743\u9650"),
+    ACTION_EXIT("Exit", "\u9000\u51fa"),
+    ACTION_UNDO("Undo", "\u64a4\u9500"),
+    ACTION_REDO("Redo", "\u91cd\u505a"),
+    ACTION_CUT("Cut", "\u526a\u5207"),
+    ACTION_COPY("Copy", "\u590d\u5236"),
+    ACTION_PASTE("Paste", "\u7c98\u8d34"),
+    ACTION_SELECT_ALL("Select All", "\u5168\u9009"),
+    ACTION_RUN("Run", "\u8fd0\u884c"),
+    ACTION_RUN_ALL("Run All", "\u5168\u90e8\u8fd0\u884c"),
+    ACTION_RUN_LINE("Run Current Line", "\u8fd0\u884c\u5f53\u524d\u884c"),
+    ACTION_STOP("Stop", "\u505c\u6b62"),
+    ACTION_CLEAR_OUTPUT("Clear Output", "\u6e05\u7a7a\u8f93\u51fa"),
+    ACTION_FONTS("Fonts\u2026", "\u5b57\u4f53\u2026"),
+    ACTION_LARGER_FONT("Larger Editor Font", "\u653e\u5927\u7f16\u8f91\u5668\u5b57\u4f53"),
+    ACTION_SMALLER_FONT("Smaller Editor Font", "\u7f29\u5c0f\u7f16\u8f91\u5668\u5b57\u4f53"),
+    ACTION_ABOUT("About", "\u5173\u4e8e"),
+
+    // --- action tooltips ---------------------------------------------------
+    TIP_NEW_TAB("Create a new script tab", "\u65b0\u5efa\u4e00\u4e2a\u811a\u672c\u6807\u7b7e\u9875"),
+    TIP_OPEN("Open a .cmd, .bat or .ps1 script", "\u6253\u5f00 .cmd\u3001.bat \u6216 .ps1 \u811a\u672c"),
+    TIP_SAVE("Save the active script", "\u4fdd\u5b58\u5f53\u524d\u811a\u672c"),
+    TIP_SAVE_AS("Save the active script under a new name", "\u5c06\u5f53\u524d\u811a\u672c\u53e6\u5b58\u4e3a\u65b0\u6587\u4ef6"),
+    TIP_CLOSE_TAB("Close the active script tab", "\u5173\u95ed\u5f53\u524d\u6807\u7b7e\u9875"),
+    TIP_WORKSPACE("Choose the working directory", "\u9009\u62e9\u5de5\u4f5c\u76ee\u5f55"),
+    TIP_ADMIN("Open a second window with administrator rights", "\u518d\u5f00\u4e00\u4e2a\u7ba1\u7406\u5458\u6743\u9650\u7a97\u53e3"),
+    TIP_ADMIN_DONE("This window is running as administrator", "\u672c\u7a97\u53e3\u5df2\u662f\u7ba1\u7406\u5458\u6743\u9650"),
+    TIP_EXIT("Quit the application", "\u9000\u51fa\u7a0b\u5e8f"),
+    TIP_RUN("Run the selection, or the whole script", "\u8fd0\u884c\u9009\u4e2d\u5185\u5bb9\uff0c\u65e0\u9009\u4e2d\u5219\u8fd0\u884c\u6574\u4e2a\u811a\u672c"),
+    TIP_RUN_ALL("Run every command, ignoring the selection", "\u8fd0\u884c\u5168\u90e8\u547d\u4ee4\uff0c\u5ffd\u7565\u9009\u4e2d\u5185\u5bb9"),
+    TIP_RUN_LINE("Run the command the caret is in", "\u8fd0\u884c\u5149\u6807\u6240\u5728\u7684\u547d\u4ee4"),
+    TIP_STOP("Stop the active tab's interpreter", "\u505c\u6b62\u5f53\u524d\u6807\u7b7e\u9875\u7684\u89e3\u91ca\u5668"),
+    TIP_CLEAR_OUTPUT("Remove all console output", "\u6e05\u9664\u63a7\u5236\u53f0\u5168\u90e8\u8f93\u51fa"),
+    TIP_FONTS("Choose the font used by the editor and the console", "\u9009\u62e9\u7f16\u8f91\u5668\u4e0e\u63a7\u5236\u53f0\u7684\u5b57\u4f53"),
+    TIP_LARGER_FONT("Make the editor text bigger", "\u653e\u5927\u7f16\u8f91\u5668\u6587\u5b57"),
+    TIP_SMALLER_FONT("Make the editor text smaller", "\u7f29\u5c0f\u7f16\u8f91\u5668\u6587\u5b57"),
+    TIP_ABOUT("About this application", "\u5173\u4e8e\u672c\u7a0b\u5e8f"),
+
+    // --- tool bar and location bar ----------------------------------------
+    TOOLBAR_INTERPRETER("Interpreter:", "\u89e3\u91ca\u5668\uff1a"),
+    TOOLBAR_INTERPRETER_TIP("Interpreter used by the active tab", "\u5f53\u524d\u6807\u7b7e\u9875\u4f7f\u7528\u7684\u89e3\u91ca\u5668"),
+    LOCATION_CAPTION("Working directory:", "\u5de5\u4f5c\u76ee\u5f55\uff1a"),
+    LOCATION_CHANGE("Change\u2026", "\u66f4\u6539\u2026"),
+    LOCATION_CHANGE_TIP("Choose the working directory", "\u9009\u62e9\u5de5\u4f5c\u76ee\u5f55"),
+    LOCATION_UP_TIP("Go to the parent folder", "\u8fdb\u5165\u4e0a\u4e00\u7ea7\u76ee\u5f55"),
+    LOCATION_PATH_TIP("Type a path and press Enter, or use Change\u2026 to browse",
+            "\u8f93\u5165\u8def\u5f84\u540e\u6309\u56de\u8f66\uff0c\u6216\u70b9\u201c\u66f4\u6539\u2026\u201d\u6d4f\u89c8"),
+    LOCATION_LIVE("(live)", "\uff08\u5b9e\u65f6\uff09"),
+    LOCATION_STARTUP("(startup)", "\uff08\u542f\u52a8\u503c\uff09"),
+    LOCATION_LIVE_TIP("Reported by the running interpreter", "\u7531\u6b63\u5728\u8fd0\u884c\u7684\u89e3\u91ca\u5668\u62a5\u544a"),
+    LOCATION_STARTUP_TIP("Directory new sessions will start in", "\u65b0\u4f1a\u8bdd\u7684\u8d77\u59cb\u76ee\u5f55"),
+    LOCATION_NOT_FOUND("(not found)", "\uff08\u672a\u627e\u5230\uff09"),
+    LOCATION_REFUSED("(refused)", "\uff08\u5df2\u62d2\u7edd\uff09"),
+
+    // --- status bar --------------------------------------------------------
+    STATUS_READY("Ready", "\u5c31\u7eea"),
+    STATUS_STANDARD_USER("Standard user", "\u666e\u901a\u7528\u6237"),
+    STATUS_ADMIN_USER("Administrator", "\u7ba1\u7406\u5458"),
+    STATUS_CARET("Ln %d, Col %d", "\u7b2c %d \u884c\uff0c\u7b2c %d \u5217"),
+    STATUS_LOCATION_TIP("Working directory: %s", "\u5de5\u4f5c\u76ee\u5f55\uff1a%s"),
+    STATUS_ELEVATED_TIP("Running with administrator privileges", "\u5f53\u524d\u4ee5\u7ba1\u7406\u5458\u6743\u9650\u8fd0\u884c"),
+    STATUS_STANDARD_TIP("Running as a standard user", "\u5f53\u524d\u4ee5\u666e\u901a\u7528\u6237\u8eab\u4efd\u8fd0\u884c"),
+    STATUS_INTERPRETER_TIP("Active interpreter: %s", "\u5f53\u524d\u89e3\u91ca\u5668\uff1a%s"),
+    STATUS_SHELL_NONE("(none)", "\uff08\u65e0\uff09"),
+
+    // --- problems panel ----------------------------------------------------
+    PROBLEMS_TAB("Problems", "\u95ee\u9898"),
+    OUTPUT_TAB("Output", "\u8f93\u51fa"),
+    COLUMN_LINE("Line", "\u884c"),
+    COLUMN_PROBLEM("Problem", "\u95ee\u9898"),
+    COLUMN_SUGGESTION("Suggestion", "\u5efa\u8bae"),
+    NO_PROBLEMS("No problems detected", "\u672a\u53d1\u73b0\u95ee\u9898"),
+    PROBLEMS_COUNT("%d problems \u2014 %d dangerous, %d risky", "%d \u4e2a\u95ee\u9898 \u2014 %d \u4e2a\u5371\u9669\uff0c%d \u4e2a\u98ce\u9669"),
+    PROBLEMS_COUNT_ONE("1 problem \u2014 %d dangerous, %d risky", "1 \u4e2a\u95ee\u9898 \u2014 %d \u4e2a\u5371\u9669\uff0c%d \u4e2a\u98ce\u9669"),
+    PROBLEMS_NOTED(", %d noted", "\uff0c%d \u4e2a\u63d0\u793a"),
+
+    // --- editor ------------------------------------------------------------
+    TAB_UNTITLED("Untitled", "\u672a\u547d\u540d"),
+    TAB_UNTITLED_N("Untitled %d", "\u672a\u547d\u540d %d"),
+    TAB_UNSAVED_SCRIPT("Unsaved script", "\u672a\u4fdd\u5b58\u7684\u811a\u672c"),
+    TAB_CLOSE_TIP("Close tab", "\u5173\u95ed\u6807\u7b7e\u9875"),
+    FILE_BATCH_FILTER("Batch scripts (*.cmd, *.bat)", "\u6279\u5904\u7406\u811a\u672c (*.cmd, *.bat)"),
+    FILE_POWERSHELL_FILTER("PowerShell scripts (*.ps1)", "PowerShell \u811a\u672c (*.ps1)"),
+    FILE_ALL_SCRIPTS_FILTER("All scripts (*.cmd, *.bat, *.ps1)", "\u5168\u90e8\u811a\u672c (*.cmd, *.bat, *.ps1)"),
+    DIALOG_OPEN_SCRIPT("Open script", "\u6253\u5f00\u811a\u672c"),
+    DIALOG_SAVE_SCRIPT("Save script as", "\u811a\u672c\u53e6\u5b58\u4e3a"),
+    DIALOG_CHOOSE_FOLDER("Select workspace folder", "\u9009\u62e9\u5de5\u4f5c\u76ee\u5f55"),
+    DIALOG_USE_FOLDER("Use this folder", "\u4f7f\u7528\u6b64\u76ee\u5f55"),
+
+    // --- console -----------------------------------------------------------
+    CONSOLE_INPUT_TIP("Type a command and press Enter to run it in the active tab. "
+            + "Up and Down recall earlier commands.",
+            "\u8f93\u5165\u547d\u4ee4\u540e\u6309\u56de\u8f66\u5728\u5f53\u524d\u6807\u7b7e\u9875\u6267\u884c\u3002"
+                    + "\u4e0a\u4e0b\u65b9\u5411\u952e\u53ef\u56de\u8c03\u5386\u53f2\u547d\u4ee4\u3002"),
+    GREETING_RUN_HINT("Write commands above, then press Ctrl+Enter or click Run.",
+            "\u5728\u4e0a\u65b9\u7f16\u5199\u547d\u4ee4\uff0c\u7136\u540e\u6309 Ctrl+Enter \u6216\u70b9\u51fb\u201c\u8fd0\u884c\u201d\u3002"),
+    GREETING_SESSION_HINT("Each tab owns a persistent interpreter session, so cd and variables stick.",
+            "\u6bcf\u4e2a\u6807\u7b7e\u9875\u62e5\u6709\u72ec\u7acb\u7684\u5e38\u9a7b\u4f1a\u8bdd\uff0ccd \u548c\u53d8\u91cf\u4f1a\u4fdd\u7559\u3002"),
+    GREETING_CONSOLE_HINT("You can also type single commands at the prompt below.",
+            "\u4e5f\u53ef\u4ee5\u5728\u4e0b\u65b9\u63d0\u793a\u7b26\u5904\u76f4\u63a5\u8f93\u5165\u5355\u6761\u547d\u4ee4\u3002"),
+
+    // --- run results -------------------------------------------------------
+    RUN_FINISHED("[%s finished, exit code %d]", "[%s \u5df2\u5b8c\u6210\uff0c\u9000\u51fa\u7801 %d]"),
+    RUN_FAILED("[%s reported a failure, exit code %d]", "[%s \u62a5\u544a\u5931\u8d25\uff0c\u9000\u51fa\u7801 %d]"),
+    STATUS_FINISHED("Finished, exit code %d", "\u5df2\u5b8c\u6210\uff0c\u9000\u51fa\u7801 %d"),
+    STATUS_FINISHED_ERROR("Finished with an error, exit code %d", "\u5df2\u7ed3\u675f\u4f46\u62a5\u9519\uff0c\u9000\u51fa\u7801 %d"),
+    STATUS_RUNNING("Running %d command%s in %s (pid %d) \u2026", "\u6b63\u5728 %s \u4e2d\u8fd0\u884c %d \u6761\u547d\u4ee4\uff08\u8fdb\u7a0b %d\uff09\u2026"),
+    STATUS_RUNNING_ONE("Running 1 command in %s (pid %d) \u2026", "\u6b63\u5728 %s \u4e2d\u8fd0\u884c 1 \u6761\u547d\u4ee4\uff08\u8fdb\u7a0b %d\uff09\u2026"),
+    STATUS_NOTHING_TO_RUN("Nothing to run", "\u6ca1\u6709\u53ef\u8fd0\u884c\u7684\u5185\u5bb9"),
+    STATUS_COMMENT_LINE("This line is a comment or blank", "\u8fd9\u4e00\u884c\u662f\u6ce8\u91ca\u6216\u7a7a\u884c"),
+    STATUS_BUSY("A command is already running in this tab", "\u8be5\u6807\u7b7e\u9875\u5df2\u6709\u547d\u4ee4\u5728\u8fd0\u884c"),
+    STATUS_SESSION_CLOSED("[%s session ended, exit code %d]", "[%s \u4f1a\u8bdd\u5df2\u7ed3\u675f\uff0c\u9000\u51fa\u7801 %d]"),
+    STATUS_SESSION_STOPPED("[session stopped]", "[\u4f1a\u8bdd\u5df2\u505c\u6b62]"),
+    STATUS_NO_SESSION("No running session in this tab", "\u8be5\u6807\u7b7e\u9875\u6ca1\u6709\u8fd0\u884c\u4e2d\u7684\u4f1a\u8bdd"),
+    STATUS_SESSION_STOPPED_OK("Session stopped", "\u4f1a\u8bdd\u5df2\u505c\u6b62"),
+    STATUS_TAB_CREATED("New tab created", "\u5df2\u65b0\u5efa\u6807\u7b7e\u9875"),
+    STATUS_TAB_CLOSED("Tab closed", "\u6807\u7b7e\u9875\u5df2\u5173\u95ed"),
+    STATUS_CANNOT_START("Could not start %s", "\u65e0\u6cd5\u542f\u52a8 %s"),
+    STATUS_CANNOT_RUN("Could not run the script", "\u65e0\u6cd5\u8fd0\u884c\u811a\u672c"),
+    STATUS_INTERPRETER_SWITCHED("Active tab now targets %s", "\u5f53\u524d\u6807\u7b7e\u9875\u5df2\u5207\u6362\u5230 %s"),
+    STATUS_WORKSPACE_SET("Workspace set to %s", "\u5de5\u4f5c\u76ee\u5f55\u5df2\u8bbe\u4e3a %s"),
+    STATUS_WORKSPACE_APPLIED("Workspace set and applied to %d session(s)", "\u5de5\u4f5c\u76ee\u5f55\u5df2\u8bbe\u7f6e\u5e76\u5e94\u7528\u5230 %d \u4e2a\u4f1a\u8bdd"),
+    STATUS_WORKSPACE_UNCHANGED("Workspace unchanged", "\u5de5\u4f5c\u76ee\u5f55\u672a\u53d8\u66f4"),
+    STATUS_NOT_A_DIRECTORY("Not a directory: %s", "\u4e0d\u662f\u76ee\u5f55\uff1a%s"),
+    STATUS_FONT_CHANGED("%s font: %s %dpt", "%s \u5b57\u4f53\uff1a%s %dpt"),
+    STATUS_FONTS_UNCHANGED("Fonts unchanged", "\u5b57\u4f53\u672a\u53d8\u66f4"),
+    STATUS_EDITOR_FONT("Editor font %dpt", "\u7f16\u8f91\u5668\u5b57\u4f53 %dpt"),
+    STATUS_OPENED("Opened %s", "\u5df2\u6253\u5f00 %s"),
+    STATUS_SAVED("Saved %s (%s)", "\u5df2\u4fdd\u5b58 %s\uff08%s\uff09"),
+    STATUS_SAVE_CANCELLED("Save cancelled", "\u5df2\u53d6\u6d88\u4fdd\u5b58"),
+    STATUS_CANNOT_OPEN("Could not open %s", "\u65e0\u6cd5\u6253\u5f00 %s"),
+    STATUS_CANNOT_SAVE("Could not save %s", "\u65e0\u6cd5\u4fdd\u5b58 %s"),
+    STATUS_RUN_CANCELLED("Run cancelled", "\u5df2\u53d6\u6d88\u8fd0\u884c"),
+    STATUS_ADMIN_STARTED("Elevated window started", "\u5df2\u542f\u52a8\u7ba1\u7406\u5458\u7a97\u53e3"),
+    STATUS_ADMIN_CANCELLED("Administrator window cancelled", "\u5df2\u53d6\u6d88\u7ba1\u7406\u5458\u7a97\u53e3"),
+    STATUS_ADMIN_REFUSED("Administrator window was refused", "\u7ba1\u7406\u5458\u7a97\u53e3\u88ab\u62d2\u7edd"),
+    STATUS_ADMIN_FAILED("Administrator window failed", "\u7ba1\u7406\u5458\u7a97\u53e3\u542f\u52a8\u5931\u8d25"),
+    STATUS_ADMIN_UNAVAILABLE("Administrator restart unavailable", "\u65e0\u6cd5\u4ee5\u7ba1\u7406\u5458\u8eab\u4efd\u91cd\u542f"),
+    STATUS_ELEVATED_KEEPS_RUNNING("[an elevated window was started; this one keeps running]",
+            "[\u5df2\u542f\u52a8\u4e00\u4e2a\u7ba1\u7406\u5458\u7a97\u53e3\uff0c\u672c\u7a97\u53e3\u7ee7\u7eed\u8fd0\u884c]"),
+    STATUS_RUN_CANCELLED_DANGER("[run cancelled: %d dangerous command%s not confirmed]",
+            "[\u5df2\u53d6\u6d88\u8fd0\u884c\uff1a%d \u6761\u5371\u9669\u547d\u4ee4\u672a\u786e\u8ba4]"),
+
+    // --- file errors -------------------------------------------------------
+    ERROR_READ("%s: %s", "%s\uff1a%s"),
+    ERROR_SAVE("Could not save the file:\n%s", "\u65e0\u6cd5\u4fdd\u5b58\u6587\u4ef6\uff1a\n%s"),
+    DIALOG_SAVE_FAILED("Save failed", "\u4fdd\u5b58\u5931\u8d25"),
+    DIALOG_SAVE_CHANGES("Unsaved changes", "\u672a\u4fdd\u5b58\u7684\u4fee\u6539"),
+    DIALOG_SAVE_CHANGES_MESSAGE("Save changes to %s?", "\u662f\u5426\u4fdd\u5b58\u5bf9 %s \u7684\u4fee\u6539\uff1f"),
+    DIALOG_REPLACE("Confirm save as", "\u786e\u8ba4\u53e6\u5b58\u4e3a"),
+    DIALOG_REPLACE_MESSAGE("%s already exists.\nReplace it?", "%s \u5df2\u5b58\u5728\u3002\n\u662f\u5426\u66ff\u6362\uff1f"),
+    DIALOG_LOSSY_TITLE("Some characters cannot be saved", "\u90e8\u5206\u5b57\u7b26\u65e0\u6cd5\u4fdd\u5b58"),
+    DIALOG_LOSSY_MESSAGE("These characters cannot be written in %s, which is the code page "
+            + "cmd.exe reads batch files with:\n\n    %s\n\nSaving will replace them with '?'. "
+            + "Save the script as PowerShell (.ps1) to keep them.\n\nSave anyway?",
+            "\u4ee5\u4e0b\u5b57\u7b26\u65e0\u6cd5\u7528 %s \u7f16\u7801\uff0c"
+                    + "\u800c cmd.exe \u6b63\u662f\u7528\u8be5\u4ee3\u7801\u9875\u8bfb\u53d6\u6279\u5904\u7406\u6587\u4ef6\u7684\uff1a\n\n    %s\n\n"
+                    + "\u4fdd\u5b58\u540e\u5b83\u4eec\u4f1a\u53d8\u6210\u201c?\u201d\u3002"
+                    + "\u6539\u5b58\u4e3a PowerShell\uff08.ps1\uff09\u53ef\u4ee5\u4fdd\u7559\u5b83\u4eec\u3002\n\n\u4ecd\u7136\u4fdd\u5b58\uff1f"),
+
+    // --- system folder warning --------------------------------------------
+    DIALOG_SYSTEM_FOLDER_TITLE("System folder", "\u7cfb\u7edf\u6587\u4ef6\u5939"),
+    DIALOG_SYSTEM_FOLDER_MESSAGE("%s\n\nThis is a Windows system folder. Commands run here "
+            + "could damage the operating system.\n\nUse it anyway?",
+            "%s\n\n\u8fd9\u662f Windows \u7cfb\u7edf\u6587\u4ef6\u5939\u3002"
+                    + "\u5728\u6b64\u8fd0\u884c\u547d\u4ee4\u53ef\u80fd\u4f1a\u635f\u574f\u64cd\u4f5c\u7cfb\u7edf\u3002\n\n\u4ecd\u7136\u4f7f\u7528\uff1f"),
+
+    // --- dangerous command confirmation -----------------------------------
+    DIALOG_DANGER_TITLE("Dangerous command", "\u5371\u9669\u547d\u4ee4"),
+    DANGER_HEADER_ONE("<html><b>This script contains 1 destructive command.</b><br><br>",
+            "<html><b>\u8be5\u811a\u672c\u5305\u542b 1 \u6761\u7834\u574f\u6027\u547d\u4ee4\u3002</b><br><br>"),
+    DANGER_HEADER_MANY("<html><b>This script contains %d destructive commands.</b><br><br>",
+            "<html><b>\u8be5\u811a\u672c\u5305\u542b %d \u6761\u7834\u574f\u6027\u547d\u4ee4\u3002</b><br><br>"),
+    DANGER_LINE("<b>Line %d:</b> %s<br>", "<b>\u7b2c %d \u884c\uff1a</b>%s<br>"),
+    DANGER_SNIPPET("<font color='#666666'>&nbsp;&nbsp;&nbsp;&nbsp;%s</font><br>",
+            "<font color='#666666'>&nbsp;&nbsp;&nbsp;&nbsp;%s</font><br>"),
+    DANGER_ADVICE("<font color='#666666'>&nbsp;&nbsp;&nbsp;&nbsp;\u2192 %s</font><br><br>",
+            "<font color='#666666'>&nbsp;&nbsp;&nbsp;&nbsp;\u2192 %s</font><br><br>"),
+    DANGER_FOOTER("Run it anyway?</html>", "\u4ecd\u7136\u8fd0\u884c\u5417\uff1f</html>"),
+
+    // --- administrator mode ------------------------------------------------
+    DIALOG_ADMIN_TITLE("Administrator mode", "\u7ba1\u7406\u5458\u6a21\u5f0f"),
+    DIALOG_ADMIN_ALREADY("This window is already running with administrator rights.\n\n"
+            + "The elevated window is the one with the highlighted Administrator button.",
+            "\u672c\u7a97\u53e3\u5df2\u7ecf\u62e5\u6709\u7ba1\u7406\u5458\u6743\u9650\u3002\n\n"
+                    + "\u201c\u7ba1\u7406\u5458\u6743\u9650\u201d\u6309\u94ae\u9ad8\u4eae\u7684\u90a3\u4e2a\u7a97\u53e3\u5c31\u662f\u3002"),
+    DIALOG_ADMIN_CONFIRM("Windows will ask for permission to open a second window with "
+            + "administrator rights.\n\nThis window stays open. The elevated window starts in "
+            + "%s and its Administrator button is highlighted.\n\nContinue?",
+            "Windows \u4f1a\u8be2\u95ee\u662f\u5426\u5141\u8bb8\u518d\u5f00\u4e00\u4e2a\u62e5\u6709\u7ba1\u7406\u5458\u6743\u9650\u7684\u7a97\u53e3\u3002\n\n"
+                    + "\u672c\u7a97\u53e3\u4f1a\u7ee7\u7eed\u4fdd\u7559\u3002\u65b0\u7a97\u53e3\u5c06\u4ee5 %s \u4e3a\u5de5\u4f5c\u76ee\u5f55\uff0c"
+                    + "\u5e76\u4e14\u5b83\u7684\u201c\u7ba1\u7406\u5458\u6743\u9650\u201d\u6309\u94ae\u4f1a\u9ad8\u4eae\u3002\n\n\u7ee7\u7eed\uff1f"),
+    DIALOG_ADMIN_REFUSED("The elevated window could not be started.\n\n"
+            + "This usually means the permission prompt was dismissed.",
+            "\u65e0\u6cd5\u542f\u52a8\u7ba1\u7406\u5458\u7a97\u53e3\u3002\n\n"
+                    + "\u901a\u5e38\u662f\u56e0\u4e3a\u6743\u9650\u5f39\u7a97\u88ab\u53d6\u6d88\u4e86\u3002"),
+    DIALOG_ADMIN_NO_COMMAND("Could not work out how this program was started, so an "
+            + "elevated copy cannot be started.",
+            "\u65e0\u6cd5\u786e\u5b9a\u672c\u7a0b\u5e8f\u7684\u542f\u52a8\u65b9\u5f0f\uff0c\u56e0\u6b64\u65e0\u6cd5\u542f\u52a8\u7ba1\u7406\u5458\u526f\u672c\u3002"),
+
+    // --- about -------------------------------------------------------------
+    ABOUT_SUBTITLE("A graphical front end for cmd.exe and powershell.exe.",
+            "cmd.exe \u4e0e powershell.exe \u7684\u56fe\u5f62\u5316\u524d\u7aef\u3002"),
+    ABOUT_DETAILS("Java %s \u00b7 %s", "Java %s \u00b7 %s"),
+    ABOUT_CODEPAGE("Console code page: %s", "\u63a7\u5236\u53f0\u4ee3\u7801\u9875\uff1a%s"),
+    ABOUT_LICENSE("Licensed under the MIT license.", "\u4f7f\u7528 MIT \u8bb8\u53ef\u8bc1\u3002"),
+    ABOUT_TITLE("About %s", "\u5173\u4e8e %s"),
+
+    // --- font dialog -------------------------------------------------------
+    FONTS_TITLE("Fonts", "\u5b57\u4f53"),
+    FONTS_TARGET("Apply to:", "\u5e94\u7528\u4e8e\uff1a"),
+    FONTS_FAMILY("Font:", "\u5b57\u4f53\uff1a"),
+    FONTS_STYLE("Style:", "\u5b57\u5f62\uff1a"),
+    FONTS_SIZE("Size:", "\u5927\u5c0f\uff1a"),
+    FONTS_STYLE_PLAIN("Plain", "\u5e38\u89c4"),
+    FONTS_STYLE_BOLD("Bold", "\u52a0\u7c97"),
+    FONTS_STYLE_ITALIC("Italic", "\u659c\u4f53"),
+    FONTS_STYLE_BOLD_ITALIC("Bold Italic", "\u52a0\u7c97\u659c\u4f53"),
+    FONTS_EDITOR("Editor", "\u7f16\u8f91\u5668"),
+    FONTS_CONSOLE("Console", "\u63a7\u5236\u53f0"),
+
+    // --- interpreters ------------------------------------------------------
+    SHELL_CMD("CMD", "CMD"),
+    SHELL_POWERSHELL("PowerShell", "PowerShell"),
+    SHELL_CMD_DESCRIPTION("Command Prompt", "\u547d\u4ee4\u63d0\u793a\u7b26"),
+    SHELL_POWERSHELL_DESCRIPTION("Windows PowerShell", "Windows PowerShell"),
+
+    // --- danger rules ------------------------------------------------------
+    RULE_CMD_FORMAT_MESSAGE("format erases an entire drive", "format \u4f1a\u6e05\u7a7a\u6574\u4e2a\u78c1\u76d8"),
+    RULE_CMD_FORMAT_ADVICE("Double-check the drive letter; this cannot be undone.",
+            "\u8bf7\u53cd\u590d\u786e\u8ba4\u76d8\u7b26\uff0c\u6b64\u64cd\u4f5c\u65e0\u6cd5\u64a4\u9500\u3002"),
+    RULE_CMD_DISKPART_MESSAGE("diskpart can repartition or wipe disks",
+            "diskpart \u53ef\u4ee5\u91cd\u65b0\u5206\u533a\u6216\u6e05\u7a7a\u78c1\u76d8"),
+    RULE_CMD_DISKPART_ADVICE("Run it manually only when you are certain which disk is targeted.",
+            "\u53ea\u6709\u5728\u786e\u5b9a\u76ee\u6807\u78c1\u76d8\u65f6\u624d\u624b\u52a8\u6267\u884c\u3002"),
+    RULE_CMD_DEL_FORCE_MESSAGE("del with /f or /s deletes files permanently",
+            "del \u5e26 /f \u6216 /s \u4f1a\u6c38\u4e45\u5220\u9664\u6587\u4ef6"),
+    RULE_CMD_DEL_FORCE_ADVICE("Recycle them with PowerShell instead, or remove the /f and /s switches.",
+            "\u53ef\u6539\u7528 PowerShell \u5220\u5230\u56de\u6536\u7ad9\uff0c\u6216\u53bb\u6389 /f \u548c /s \u53c2\u6570\u3002"),
+    RULE_CMD_RD_TREE_MESSAGE("rd /s removes a whole directory tree",
+            "rd /s \u4f1a\u5220\u9664\u6574\u4e2a\u76ee\u5f55\u6811"),
+    RULE_CMD_RD_TREE_ADVICE("List the contents first to confirm what will be lost.",
+            "\u5efa\u8bae\u5148\u5217\u51fa\u76ee\u5f55\u5185\u5bb9\uff0c\u786e\u8ba4\u4f1a\u4e22\u5931\u4ec0\u4e48\u3002"),
+    RULE_CMD_DEL_DRIVE_MESSAGE("This deletes from the root of a drive",
+            "\u8fd9\u4f1a\u4ece\u76d8\u7b26\u6839\u76ee\u5f55\u5f00\u59cb\u5220\u9664"),
+    RULE_CMD_DEL_DRIVE_ADVICE("Never delete a drive root; narrow the path to a specific folder.",
+            "\u4e0d\u8981\u5220\u9664\u76d8\u7b26\u6839\u76ee\u5f55\uff0c\u8bf7\u628a\u8def\u5f84\u9650\u5b9a\u5230\u5177\u4f53\u6587\u4ef6\u5939\u3002"),
+    RULE_CMD_BCDEDIT_MESSAGE("bcdedit changes the boot configuration",
+            "bcdedit \u4f1a\u4fee\u6539\u5f15\u5bfc\u914d\u7f6e"),
+    RULE_CMD_BCDEDIT_ADVICE("A bad edit can stop Windows from starting.",
+            "\u4fee\u6539\u51fa\u9519\u53ef\u80fd\u5bfc\u81f4 Windows \u65e0\u6cd5\u542f\u52a8\u3002"),
+    RULE_CMD_CIPHER_MESSAGE("cipher /w overwrites free space and makes recovery impossible",
+            "cipher /w \u4f1a\u8986\u5199\u7a7a\u95f2\u7a7a\u95f4\uff0c\u4f7f\u6570\u636e\u65e0\u6cd5\u6062\u590d"),
+    RULE_CMD_CIPHER_ADVICE("Only use it when you intend to destroy deleted data for good.",
+            "\u53ea\u6709\u5728\u786e\u5b9a\u8981\u5f7b\u5e95\u9500\u6bc1\u5df2\u5220\u6570\u636e\u65f6\u624d\u4f7f\u7528\u3002"),
+    RULE_CMD_SHADOW_MESSAGE("Deleting shadow copies destroys restore points and backups",
+            "\u5220\u9664\u5377\u5f71\u526f\u672c\u4f1a\u6467\u6bc1\u8fd8\u539f\u70b9\u548c\u5907\u4efd"),
+    RULE_CMD_SHADOW_ADVICE("This is a common ransomware technique; verify the source of the script.",
+            "\u8fd9\u662f\u52d2\u7d22\u8f6f\u4ef6\u7684\u5e38\u89c1\u624b\u6cd5\uff0c\u8bf7\u786e\u8ba4\u811a\u672c\u6765\u6e90\u3002"),
+    RULE_CMD_FORKBOMB_MESSAGE("This line recursively re-runs itself",
+            "\u8fd9\u4e00\u884c\u4f1a\u9012\u5f52\u5730\u91cd\u590d\u6267\u884c\u81ea\u8eab"),
+    RULE_CMD_FORKBOMB_ADVICE("It will exhaust the machine's resources.",
+            "\u5b83\u4f1a\u8017\u5c3d\u672c\u673a\u8d44\u6e90\u3002"),
+    RULE_CMD_ENCODED_MESSAGE("An encoded PowerShell payload hides what it does",
+            "\u7ecf\u7f16\u7801\u7684 PowerShell \u4ee3\u7801\u9690\u85cf\u4e86\u5b83\u7684\u771f\u5b9e\u884c\u4e3a"),
+    RULE_CMD_ENCODED_ADVICE("Decode it and read it before running.",
+            "\u8bf7\u5148\u89e3\u7801\u5e76\u9605\u8bfb\u5185\u5bb9\u518d\u8fd0\u884c\u3002"),
+    RULE_CMD_REDIRECT_MESSAGE("Writing into the Windows directory can break the system",
+            "\u5411 Windows \u76ee\u5f55\u5199\u5165\u6587\u4ef6\u53ef\u80fd\u7834\u574f\u7cfb\u7edf"),
+    RULE_CMD_REDIRECT_ADVICE("Redirect to a folder you own instead.",
+            "\u8bf7\u6539\u4e3a\u91cd\u5b9a\u5411\u5230\u81ea\u5df1\u7684\u6587\u4ef6\u5939\u3002"),
+    RULE_CMD_NET_ADMIN_MESSAGE("This grants administrator rights to an account",
+            "\u8fd9\u4f1a\u628a\u7ba1\u7406\u5458\u6743\u9650\u6388\u4e88\u67d0\u4e2a\u8d26\u6237"),
+    RULE_CMD_NET_ADMIN_ADVICE("Confirm the account name carefully.",
+            "\u8bf7\u4ed4\u7ec6\u6838\u5bf9\u8d26\u6237\u540d\u3002"),
+    RULE_CMD_NET_USER_MESSAGE("This creates a local user account",
+            "\u8fd9\u4f1a\u521b\u5efa\u4e00\u4e2a\u672c\u5730\u7528\u6237\u8d26\u6237"),
+    RULE_CMD_NET_USER_ADVICE("Remove the account again if it was only a test.",
+            "\u5982\u679c\u53ea\u662f\u6d4b\u8bd5\uff0c\u8bf7\u4e8b\u540e\u5220\u9664\u8be5\u8d26\u6237\u3002"),
+    RULE_CMD_REG_DELETE_MESSAGE("Deleting registry keys can break applications",
+            "\u5220\u9664\u6ce8\u518c\u8868\u9879\u53ef\u80fd\u5bfc\u81f4\u8f6f\u4ef6\u65e0\u6cd5\u4f7f\u7528"),
+    RULE_CMD_REG_DELETE_ADVICE("Export the key first with reg export.",
+            "\u5efa\u8bae\u5148\u7528 reg export \u5bfc\u51fa\u8be5\u9879\u3002"),
+    RULE_CMD_ACL_MESSAGE("This changes file ownership or permissions",
+            "\u8fd9\u4f1a\u4fee\u6539\u6587\u4ef6\u6240\u6709\u8005\u6216\u6743\u9650"),
+    RULE_CMD_ACL_ADVICE("Record the current permissions before changing them.",
+            "\u4fee\u6539\u524d\u8bf7\u8bb0\u5f55\u5f53\u524d\u6743\u9650\u3002"),
+    RULE_CMD_SC_DELETE_MESSAGE("This removes a Windows service",
+            "\u8fd9\u4f1a\u5220\u9664\u4e00\u4e2a Windows \u670d\u52a1"),
+    RULE_CMD_SC_DELETE_ADVICE("Note the service name and its start type first.",
+            "\u8bf7\u5148\u8bb0\u4e0b\u670d\u52a1\u540d\u548c\u542f\u52a8\u7c7b\u578b\u3002"),
+    RULE_CMD_WMIC_DELETE_MESSAGE("This deletes objects through WMI",
+            "\u8fd9\u4f1a\u901a\u8fc7 WMI \u5220\u9664\u5bf9\u8c61"),
+    RULE_CMD_WMIC_DELETE_ADVICE("Check which objects match before running.",
+            "\u8fd0\u884c\u524d\u8bf7\u786e\u8ba4\u54ea\u4e9b\u5bf9\u8c61\u4f1a\u88ab\u547d\u4e2d\u3002"),
+    RULE_CMD_SHUTDOWN_MESSAGE("This shuts down or restarts the machine",
+            "\u8fd9\u4f1a\u5173\u673a\u6216\u91cd\u542f\u8ba1\u7b97\u673a"),
+    RULE_CMD_SHUTDOWN_ADVICE("Save your work first.", "\u8bf7\u5148\u4fdd\u5b58\u5de5\u4f5c\u3002"),
+    RULE_CMD_TASKKILL_MESSAGE("This force-kills a process", "\u8fd9\u4f1a\u5f3a\u5236\u7ed3\u675f\u8fdb\u7a0b"),
+    RULE_CMD_TASKKILL_ADVICE("Unsaved work in that process is lost.",
+            "\u8be5\u8fdb\u7a0b\u4e2d\u672a\u4fdd\u5b58\u7684\u5185\u5bb9\u4f1a\u4e22\u5931\u3002"),
+    RULE_CMD_CHKDSK_MESSAGE("chkdsk repairs the volume and may take a long time",
+            "chkdsk \u4f1a\u4fee\u590d\u78c1\u76d8\uff0c\u53ef\u80fd\u8017\u65f6\u5f88\u957f"),
+    RULE_CMD_CHKDSK_ADVICE("Make sure nothing is writing to that volume.",
+            "\u8bf7\u786e\u4fdd\u6ca1\u6709\u7a0b\u5e8f\u6b63\u5728\u5199\u5165\u8be5\u5206\u533a\u3002"),
+    RULE_CMD_RUNAS_MESSAGE("This starts a process as another user",
+            "\u8fd9\u4f1a\u4ee5\u53e6\u4e00\u4e2a\u7528\u6237\u8eab\u4efd\u542f\u52a8\u8fdb\u7a0b"),
+    RULE_CMD_RUNAS_ADVICE("Only do this for an account you own.",
+            "\u8bf7\u4ec5\u5bf9\u81ea\u5df1\u62e5\u6709\u7684\u8d26\u6237\u6267\u884c\u6b64\u64cd\u4f5c\u3002"),
+    RULE_CMD_ATTRIB_MESSAGE("This hides or clears file attributes",
+            "\u8fd9\u4f1a\u9690\u85cf\u6216\u6e05\u9664\u6587\u4ef6\u5c5e\u6027"),
+    RULE_CMD_ATTRIB_ADVICE("Remember to restore them afterwards.",
+            "\u8bb0\u5f97\u4e8b\u540e\u6062\u590d\u5c5e\u6027\u3002"),
+    RULE_CMD_SFC_MESSAGE("System File Checker scans and repairs system files",
+            "\u7cfb\u7edf\u6587\u4ef6\u68c0\u67e5\u5668\u4f1a\u626b\u63cf\u5e76\u4fee\u590d\u7cfb\u7edf\u6587\u4ef6"),
+    RULE_CMD_SFC_ADVICE("It can take several minutes.", "\u53ef\u80fd\u9700\u8981\u51e0\u5206\u949f\u3002"),
+    RULE_PS_REMOVE_RECURSE_MESSAGE("Remove-Item -Recurse -Force deletes without any confirmation",
+            "Remove-Item -Recurse -Force \u4e0d\u4f1a\u505a\u4efb\u4f55\u786e\u8ba4\u5730\u5220\u9664"),
+    RULE_PS_REMOVE_RECURSE_ADVICE("Drop -Force so the shell asks before deleting, or use the Recycle Bin.",
+            "\u53bb\u6389 -Force \u53ef\u8ba9\u8fdb\u7a0b\u5220\u9664\u524d\u8be2\u95ee\uff0c\u6216\u6539\u7528\u56de\u6536\u7ad9\u3002"),
+    RULE_PS_REMOVE_DRIVE_MESSAGE("This deletes from the root of a drive",
+            "\u8fd9\u4f1a\u4ece\u76d8\u7b26\u6839\u76ee\u5f55\u5f00\u59cb\u5220\u9664"),
+    RULE_PS_REMOVE_DRIVE_ADVICE("Narrow the path to a specific folder.",
+            "\u8bf7\u628a\u8def\u5f84\u9650\u5b9a\u5230\u5177\u4f53\u6587\u4ef6\u5939\u3002"),
+    RULE_PS_IEX_MESSAGE("Invoke-Expression runs a string as code",
+            "Invoke-Expression \u4f1a\u628a\u5b57\u7b26\u4e32\u5f53\u4ee3\u7801\u6267\u884c"),
+    RULE_PS_IEX_ADVICE("It is the usual way downloaded payloads are executed.",
+            "\u8fd9\u662f\u6267\u884c\u4e0b\u8f7d\u4ee3\u7801\u7684\u5e38\u89c1\u624b\u6cd5\u3002"),
+    RULE_PS_DOWNLOAD_EXEC_MESSAGE("This downloads code and runs it immediately",
+            "\u8fd9\u4f1a\u4e0b\u8f7d\u4ee3\u7801\u5e76\u7acb\u5373\u6267\u884c"),
+    RULE_PS_DOWNLOAD_EXEC_ADVICE("Download the file, read it, then run it deliberately.",
+            "\u5efa\u8bae\u5148\u4e0b\u8f7d\u6587\u4ef6\u3001\u9605\u8bfb\u540e\u518d\u624b\u52a8\u6267\u884c\u3002"),
+    RULE_PS_FORMAT_MESSAGE("This repartitions or formats a disk",
+            "\u8fd9\u4f1a\u91cd\u65b0\u5206\u533a\u6216\u683c\u5f0f\u5316\u78c1\u76d8"),
+    RULE_PS_FORMAT_ADVICE("Confirm the disk number with Get-Disk first.",
+            "\u8bf7\u5148\u7528 Get-Disk \u786e\u8ba4\u78c1\u76d8\u7f16\u53f7\u3002"),
+    RULE_PS_REMOVE_ITEM_MESSAGE("Remove-Item deletes files or registry keys",
+            "Remove-Item \u4f1a\u5220\u9664\u6587\u4ef6\u6216\u6ce8\u518c\u8868\u9879"),
+    RULE_PS_REMOVE_ITEM_ADVICE("Add -WhatIf to preview exactly what would be removed.",
+            "\u52a0\u4e0a -WhatIf \u53ef\u9884\u89c8\u7a76\u7adf\u4f1a\u5220\u9664\u4ec0\u4e48\u3002"),
+    RULE_PS_STOP_COMPUTER_MESSAGE("This shuts down or restarts the machine",
+            "\u8fd9\u4f1a\u5173\u673a\u6216\u91cd\u542f\u8ba1\u7b97\u673a"),
+    RULE_PS_STOP_COMPUTER_ADVICE("Save your work first.", "\u8bf7\u5148\u4fdd\u5b58\u5de5\u4f5c\u3002"),
+    RULE_PS_POLICY_MESSAGE("This changes which scripts the machine will run",
+            "\u8fd9\u4f1a\u6539\u53d8\u672c\u673a\u5141\u8bb8\u8fd0\u884c\u54ea\u4e9b\u811a\u672c"),
+    RULE_PS_POLICY_ADVICE("Prefer -Scope Process so the change is not permanent.",
+            "\u5efa\u8bae\u7528 -Scope Process\uff0c\u4f7f\u4fee\u6539\u4e0d\u4f1a\u957f\u4e45\u751f\u6548\u3002"),
+    RULE_PS_NEW_USER_MESSAGE("This creates an account or grants it group membership",
+            "\u8fd9\u4f1a\u521b\u5efa\u8d26\u6237\u6216\u5c06\u5176\u52a0\u5165\u7ec4"),
+    RULE_PS_NEW_USER_ADVICE("Confirm the account name and the group.",
+            "\u8bf7\u786e\u8ba4\u8d26\u6237\u540d\u548c\u6240\u5c5e\u7ec4\u3002"),
+    RULE_PS_REGISTRY_MESSAGE("This writes to the machine-wide registry hive",
+            "\u8fd9\u4f1a\u5199\u5165\u5168\u673a\u6ce8\u518c\u8868\u5206\u652f"),
+    RULE_PS_REGISTRY_ADVICE("Back up the key first with reg export.",
+            "\u5efa\u8bae\u5148\u7528 reg export \u5907\u4efd\u8be5\u9879\u3002"),
+    RULE_PS_SECRET_MESSAGE("A password is stored in the script as plain text",
+            "\u5bc6\u7801\u4ee5\u660e\u6587\u5f62\u5f0f\u5199\u5728\u811a\u672c\u91cc"),
+    RULE_PS_SECRET_ADVICE("Read it from Get-Credential or a protected secret store.",
+            "\u5efa\u8bae\u6539\u7528 Get-Credential \u6216\u53d7\u4fdd\u62a4\u7684\u51ed\u636e\u5b58\u50a8\u3002"),
+    RULE_PS_RESTORE_MESSAGE("This removes restore points or the machine account",
+            "\u8fd9\u4f1a\u5220\u9664\u8fd8\u539f\u70b9\u6216\u8ba1\u7b97\u673a\u8d26\u6237"),
+    RULE_PS_RESTORE_ADVICE("Make sure you have another way back.",
+            "\u8bf7\u786e\u4fdd\u8fd8\u6709\u5176\u4ed6\u56de\u9000\u624b\u6bb5\u3002"),
+    RULE_PS_UNBLOCK_MESSAGE("This removes the downloaded-file mark",
+            "\u8fd9\u4f1a\u53bb\u6389\u6587\u4ef6\u7684\u201c\u6765\u81ea\u7f51\u7edc\u201d\u6807\u8bb0"),
+    RULE_PS_UNBLOCK_ADVICE("Only unblock files you trust.", "\u8bf7\u4ec5\u5bf9\u4fe1\u4efb\u7684\u6587\u4ef6\u6267\u884c\u6b64\u64cd\u4f5c\u3002"),
+    RULE_PS_DOWNLOAD_MESSAGE("This downloads content from the network",
+            "\u8fd9\u4f1a\u4ece\u7f51\u7edc\u4e0b\u8f7d\u5185\u5bb9"),
+    RULE_PS_DOWNLOAD_ADVICE("Check the URL before running it.", "\u8fd0\u884c\u524d\u8bf7\u6838\u5bf9\u7f51\u5740\u3002"),
+    RULE_PS_RUNAS_MESSAGE("This starts an elevated process and will show a UAC prompt",
+            "\u8fd9\u4f1a\u542f\u52a8\u63d0\u6743\u8fdb\u7a0b\uff0c\u5e76\u5f39\u51fa UAC \u63d0\u793a"),
+    RULE_PS_RUNAS_ADVICE("The new process runs with administrator rights.",
+            "\u65b0\u8fdb\u7a0b\u5c06\u4ee5\u7ba1\u7406\u5458\u6743\u9650\u8fd0\u884c\u3002"),
+    RULE_ANY_RM_MESSAGE("rm -rf / deletes the entire file system",
+            "rm -rf / \u4f1a\u5220\u9664\u6574\u4e2a\u6587\u4ef6\u7cfb\u7edf"),
+    RULE_ANY_RM_ADVICE("There is no undo; make sure this is really what you meant.",
+            "\u6b64\u64cd\u4f5c\u65e0\u6cd5\u64a4\u9500\uff0c\u8bf7\u786e\u8ba4\u786e\u5b9e\u662f\u60a8\u7684\u672c\u610f\u3002"),
+    RULE_UNKNOWN_COMMAND_MESSAGE("Unknown command: %s", "\u672a\u77e5\u547d\u4ee4\uff1a%s"),
+    RULE_UNKNOWN_COMMAND_ADVICE("No such command or program was found here. Check the spelling, "
+            + "or use the full path if it is not on PATH.",
+            "\u672a\u627e\u5230\u8be5\u547d\u4ee4\u6216\u7a0b\u5e8f\u3002\u8bf7\u68c0\u67e5\u62fc\u5199\uff0c"
+                    + "\u82e5\u4e0d\u5728 PATH \u4e2d\u8bf7\u4f7f\u7528\u5b8c\u6574\u8def\u5f84\u3002");
+
+    private final String english;
+    private final String chinese;
+
+    Msg(String english, String chinese) {
+        this.english = english;
+        this.chinese = chinese;
+    }
+
+    /** @return the text in the language currently selected. */
+    public String text() {
+        return Messages.language() == Language.CHINESE ? chinese : english;
+    }
+
+    /**
+     * @param values values for the placeholders
+     * @return the formatted text in the current language
+     */
+    public String format(Object... values) {
+        return String.format(text(), values);
+    }
+}

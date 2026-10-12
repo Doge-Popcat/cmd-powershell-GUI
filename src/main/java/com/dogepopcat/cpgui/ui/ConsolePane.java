@@ -1,5 +1,8 @@
 package com.dogepopcat.cpgui.ui;
 
+import com.dogepopcat.cpgui.i18n.Messages;
+import com.dogepopcat.cpgui.i18n.Msg;
+
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.JComponent;
@@ -100,8 +103,6 @@ public class ConsolePane extends JPanel {
         input.setForeground(Theme.CONSOLE_FOREGROUND);
         input.setCaretColor(Theme.CONSOLE_FOREGROUND);
         input.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
-        input.setToolTipText("Type a command and press Enter to run it in the active tab. "
-                + "Up and Down recall earlier commands.");
         input.addActionListener(e -> submitInput());
         input.getInputMap(JComponent.WHEN_FOCUSED).put(
                 KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_UP, 0), "cpgui.console.prev");
@@ -124,7 +125,14 @@ public class ConsolePane extends JPanel {
             }
         });
         row.add(input, BorderLayout.CENTER);
+        Messages.addListener(language -> refreshText());
+        refreshText();
         return row;
+    }
+
+    /** Re-applies the localized text after a language change. */
+    public void refreshText() {
+        input.setToolTipText(Msg.CONSOLE_INPUT_TIP.text());
     }
 
     private void submitInput() {

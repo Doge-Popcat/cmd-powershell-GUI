@@ -17,6 +17,8 @@ public final class ParserProbe {
     }
 
     public static void main(String[] args) {
+        // Pin the language so assertions do not depend on the machine locale.
+        com.dogepopcat.cpgui.i18n.Messages.setLanguage(com.dogepopcat.cpgui.i18n.Language.ENGLISH);
         String cmd = String.join("\r\n",
                 "REM a comment",
                 ":: another comment",

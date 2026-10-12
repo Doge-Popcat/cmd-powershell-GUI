@@ -1,5 +1,7 @@
 package com.dogepopcat.cpgui.ui;
 
+import com.dogepopcat.cpgui.i18n.Messages;
+import com.dogepopcat.cpgui.i18n.Msg;
 import com.dogepopcat.cpgui.shell.ShellKind;
 
 import javax.swing.Action;
@@ -38,6 +40,7 @@ public class AppToolBar extends JToolBar {
     private static final int MAX_BUTTON_WIDTH = 150;
 
     private final JComboBox<ShellKind> interpreter = new JComboBox<>(ShellKind.values());
+    private final JLabel interpreterLabel = new JLabel();
     private final int buttonWidth;
     private JButton adminButton;
     private boolean syncing;
@@ -65,16 +68,24 @@ public class AppToolBar extends JToolBar {
         add(strut());
 
         add(Box.createHorizontalGlue());
-        add(new JLabel("Interpreter: "));
+        interpreterLabel.setFont(Theme.mono(12));
+        add(interpreterLabel);
         interpreter.setMaximumSize(new Dimension(160, BUTTON_HEIGHT));
         interpreter.setPreferredSize(new Dimension(150, BUTTON_HEIGHT));
-        interpreter.setToolTipText("Interpreter used by the active tab");
         interpreter.addActionListener(e -> {
             if (!syncing) {
                 frame.setActiveShellKind((ShellKind) interpreter.getSelectedItem());
             }
         });
         add(interpreter);
+        Messages.addListener(language -> refreshText());
+        refreshText();
+    }
+
+    /** Re-applies the labels after a language change. */
+    private void refreshText() {
+        interpreterLabel.setText(Msg.TOOLBAR_INTERPRETER.text());
+        interpreter.setToolTipText(Msg.TOOLBAR_INTERPRETER_TIP.text());
     }
 
     /**
@@ -149,8 +160,8 @@ public class AppToolBar extends JToolBar {
                         ? Theme.BUTTON_ELEVATED_BORDER : Theme.BUTTON_ADMIN_BORDER),
                 BorderFactory.createEmptyBorder(2, 6, 2, 6)));
         adminButton.setToolTipText(elevated
-                ? "This window is running as administrator"
-                : "Open a second window with administrator rights");
+                ? Msg.TIP_ADMIN_DONE.text()
+                : Msg.TIP_ADMIN.text());
         adminButton.repaint();
     }
 

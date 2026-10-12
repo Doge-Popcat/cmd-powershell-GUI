@@ -5,6 +5,9 @@ import com.dogepopcat.cpgui.analysis.DangerAnalyzer;
 import com.dogepopcat.cpgui.analysis.DangerAnalyzer.Finding;
 import com.dogepopcat.cpgui.analysis.ScriptParser;
 import com.dogepopcat.cpgui.io.ScriptFile;
+import com.dogepopcat.cpgui.i18n.Language;
+import com.dogepopcat.cpgui.i18n.Messages;
+import com.dogepopcat.cpgui.i18n.Msg;
 import com.dogepopcat.cpgui.io.WorkspacePolicy;
 import com.dogepopcat.cpgui.shell.SessionRegistry;
 import com.dogepopcat.cpgui.shell.ShellKind;
@@ -13,6 +16,7 @@ import com.dogepopcat.cpgui.shell.ShellSession;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.BorderFactory;
+import javax.swing.ButtonGroup;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
@@ -20,6 +24,7 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
 import javax.swing.KeyStroke;
@@ -66,104 +71,103 @@ public class MainFrame extends JFrame {
     private java.awt.Font editorFont = Theme.mono(13);
     /** The font the console uses. */
     private java.awt.Font consoleFont = Theme.mono(13);
+    /** Actions whose name and tooltip follow the selected language. */
+    private final java.util.List<Object[]> localizedActions = new java.util.ArrayList<>();
+    /** Menus whose title follows the selected language. */
+    private final java.util.List<Object[]> localizedMenus = new java.util.ArrayList<>();
 
     // --- actions -----------------------------------------------------------
 
-    private final Action newTabAction = action("New Tab", "Create a new script tab",
+    private final Action newTabAction = action(Msg.ACTION_NEW_TAB, Msg.TIP_NEW_TAB,
             KeyStroke.getKeyStroke(KeyEvent.VK_T, InputEvent.CTRL_DOWN_MASK),
             e -> newTab());
 
-    private final Action closeTabAction = action("Close Tab", "Close the active script tab",
+    private final Action closeTabAction = action(Msg.ACTION_CLOSE_TAB, Msg.TIP_CLOSE_TAB,
             KeyStroke.getKeyStroke(KeyEvent.VK_W, InputEvent.CTRL_DOWN_MASK),
             e -> closeTab(editorTabs.getSelectedIndex()));
 
-    private final Action openAction = action("Open\u2026", "Open a .cmd, .bat or .ps1 script",
+    private final Action openAction = action(Msg.ACTION_OPEN, Msg.TIP_OPEN,
             KeyStroke.getKeyStroke(KeyEvent.VK_O, InputEvent.CTRL_DOWN_MASK),
             e -> openScript());
 
-    private final Action saveAction = action("Save", "Save the active script (Ctrl+S)",
+    private final Action saveAction = action(Msg.ACTION_SAVE, Msg.TIP_SAVE,
             KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK),
             e -> saveActiveScript());
 
-    private final Action saveAsAction = action("Save As\u2026", "Save the active script under a new name",
+    private final Action saveAsAction = action(Msg.ACTION_SAVE_AS, Msg.TIP_SAVE_AS,
             KeyStroke.getKeyStroke(KeyEvent.VK_S,
                     InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK),
             e -> saveActiveScriptAs());
 
-    private final Action exitAction = action("Exit", "Quit the application", null,
+    private final Action exitAction = action(Msg.ACTION_EXIT, Msg.TIP_EXIT, null,
             e -> dispatchClose());
 
-    private final Action undoAction = action("Undo", "Undo the last edit",
+    private final Action undoAction = action(Msg.ACTION_UNDO, Msg.ACTION_UNDO,
             KeyStroke.getKeyStroke(KeyEvent.VK_Z, InputEvent.CTRL_DOWN_MASK),
             e -> withEditor(tab -> trigger(tab, "cpgui.undo")));
 
-    private final Action redoAction = action("Redo", "Redo the last undone edit",
+    private final Action redoAction = action(Msg.ACTION_REDO, Msg.ACTION_REDO,
             KeyStroke.getKeyStroke(KeyEvent.VK_Y, InputEvent.CTRL_DOWN_MASK),
             e -> withEditor(tab -> trigger(tab, "cpgui.redo")));
 
-    private final Action cutAction = action("Cut", "Cut the selection to the clipboard",
+    private final Action cutAction = action(Msg.ACTION_CUT, Msg.ACTION_CUT,
             KeyStroke.getKeyStroke(KeyEvent.VK_X, InputEvent.CTRL_DOWN_MASK),
             e -> withEditor(tab -> tab.textPane().cut()));
 
-    private final Action copyAction = action("Copy", "Copy the selection to the clipboard",
+    private final Action copyAction = action(Msg.ACTION_COPY, Msg.ACTION_COPY,
             KeyStroke.getKeyStroke(KeyEvent.VK_C, InputEvent.CTRL_DOWN_MASK),
             e -> withEditor(tab -> tab.textPane().copy()));
 
-    private final Action pasteAction = action("Paste", "Paste the clipboard into the editor",
+    private final Action pasteAction = action(Msg.ACTION_PASTE, Msg.ACTION_PASTE,
             KeyStroke.getKeyStroke(KeyEvent.VK_V, InputEvent.CTRL_DOWN_MASK),
             e -> withEditor(tab -> tab.textPane().paste()));
 
-    private final Action selectAllAction = action("Select All", "Select the whole script",
+    private final Action selectAllAction = action(Msg.ACTION_SELECT_ALL, Msg.ACTION_SELECT_ALL,
             KeyStroke.getKeyStroke(KeyEvent.VK_A, InputEvent.CTRL_DOWN_MASK),
             e -> withEditor(tab -> tab.textPane().selectAll()));
 
-    private final Action clearOutputAction = action("Clear Output", "Remove all console output",
+    private final Action clearOutputAction = action(Msg.ACTION_CLEAR_OUTPUT, Msg.TIP_CLEAR_OUTPUT,
             null, e -> console.clear());
 
-    private final Action largerFontAction = action("Larger Editor Font", null,
+    private final Action largerFontAction = action(Msg.ACTION_LARGER_FONT, Msg.TIP_LARGER_FONT,
             KeyStroke.getKeyStroke(KeyEvent.VK_EQUALS, InputEvent.CTRL_DOWN_MASK),
             e -> zoomEditor(1));
 
-    private final Action smallerFontAction = action("Smaller Editor Font", null,
+    private final Action smallerFontAction = action(Msg.ACTION_SMALLER_FONT, Msg.TIP_SMALLER_FONT,
             KeyStroke.getKeyStroke(KeyEvent.VK_MINUS, InputEvent.CTRL_DOWN_MASK),
             e -> zoomEditor(-1));
 
-    private final Action fontAction = action("Fonts\u2026",
-            "Choose the font used by the editor and the console",
+    private final Action fontAction = action(Msg.ACTION_FONTS,
+            Msg.TIP_FONTS,
             KeyStroke.getKeyStroke(KeyEvent.VK_F, InputEvent.CTRL_DOWN_MASK
                     | InputEvent.SHIFT_DOWN_MASK),
             e -> chooseFonts());
 
-    private final Action runAction = action("Run",
-            "Run the selection, or the whole script when nothing is selected (Ctrl+Enter)",
+    private final Action runAction = action(Msg.ACTION_RUN, Msg.TIP_RUN,
             KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, InputEvent.CTRL_DOWN_MASK),
             e -> runActiveScript());
 
-    private final Action runAllAction = action("Run All",
-            "Run every command in the active tab (Ctrl+Shift+Enter)",
+    private final Action runAllAction = action(Msg.ACTION_RUN_ALL, Msg.TIP_RUN_ALL,
             KeyStroke.getKeyStroke(KeyEvent.VK_ENTER,
                     InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK),
             e -> runWholeScript());
 
-    private final Action runLineAction = action("Run Current Line",
-            "Run the command the caret is in (Ctrl+L)",
+    private final Action runLineAction = action(Msg.ACTION_RUN_LINE, Msg.TIP_RUN_LINE,
             KeyStroke.getKeyStroke(KeyEvent.VK_L, InputEvent.CTRL_DOWN_MASK),
             e -> runCurrentLine());
 
-    private final Action stopAction = action("Stop", "Stop the active tab's interpreter",
+    private final Action stopAction = action(Msg.ACTION_STOP, Msg.TIP_STOP,
             KeyStroke.getKeyStroke(KeyEvent.VK_F2, 0),
             e -> stopActiveSession());
 
-    private final Action workspaceAction = action("Workspace\u2026",
-            "Choose the working directory (the graphical cd command)",
+    private final Action workspaceAction = action(Msg.ACTION_WORKSPACE, Msg.TIP_WORKSPACE,
             KeyStroke.getKeyStroke(KeyEvent.VK_K, InputEvent.CTRL_DOWN_MASK),
             e -> chooseWorkspace());
 
-    private final Action adminAction = action("Administrator",
-            "Restart the application with administrator rights",
+    private final Action adminAction = action(Msg.ACTION_ADMIN, Msg.TIP_ADMIN,
             null, e -> requestAdministratorMode());
 
-    private final Action aboutAction = action("About", null, null, e -> showAbout());
+    private final Action aboutAction = action(Msg.ACTION_ABOUT, Msg.TIP_ABOUT, null, e -> showAbout());
 
     public MainFrame() {
         this(null);
@@ -184,8 +188,8 @@ public class MainFrame extends JFrame {
         editorTabs.setSelectionListener(index -> activeTabChanged());
         editorTabs.setTabCloseRequestHandler(this::closeTab);
         problems.setLineNavigator(this::goToLine);
-        bottomTabs.addTab("Problems", problems);
-        bottomTabs.addTab("Output", console);
+        bottomTabs.addTab(Msg.PROBLEMS_TAB.text(), problems);
+        bottomTabs.addTab(Msg.OUTPUT_TAB.text(), console);
         bottomTabs.setBorder(BorderFactory.createEmptyBorder());
         // A command typed at the console prompt runs in the active tab.
         console.setInputHandler(command -> {
@@ -267,11 +271,9 @@ public class MainFrame extends JFrame {
     /** Writes the welcome banner into the console. */
     private void greet() {
         console.appendLine(AppInfo.title(), Theme.CONSOLE_SYSTEM);
-        console.appendInfo("Write commands above, then press Ctrl+Enter or click Run."
-                + System.lineSeparator());
-        console.appendInfo("Each tab owns a persistent interpreter session, so cd and variables stick."
-                + System.lineSeparator());
-        console.appendInfo(System.lineSeparator());
+        console.appendInfo(Msg.GREETING_RUN_HINT.text() + System.lineSeparator());
+        console.appendInfo(Msg.GREETING_SESSION_HINT.text() + System.lineSeparator());
+        console.appendInfo(Msg.GREETING_CONSOLE_HINT.text() + System.lineSeparator());
     }
 
     // --- action plumbing ----------------------------------------------------
@@ -296,6 +298,19 @@ public class MainFrame extends JFrame {
         return action;
     }
 
+    /**
+     * Builds an action whose name and tooltip follow the selected language.
+     *
+     * <p>The pair is remembered so {@link #applyLanguage()} can refresh every
+     * action at once; Swing then repaints the menus and tool bar for free.</p>
+     */
+    private Action action(Msg name, Msg tooltip, KeyStroke accelerator,
+                          Consumer<ActionEvent> body) {
+        Action action = action(name.text(), tooltip.text(), accelerator, body);
+        localizedActions.add(new Object[]{action, name, tooltip});
+        return action;
+    }
+
     private void trigger(EditorTab tab, String actionKey) {
         Action action = tab.textPane().getActionMap().get(actionKey);
         if (action != null) {
@@ -315,14 +330,12 @@ public class MainFrame extends JFrame {
         JPanel panel = new JPanel(new BorderLayout(12, 0));
         panel.add(new JLabel(new javax.swing.ImageIcon(Icons.appIcon(64))), BorderLayout.WEST);
         String html = "<html><b>" + AppInfo.NAME + "</b> " + AppInfo.VERSION
-                + "<br>A graphical front end for cmd.exe and powershell.exe."
-                + "<br><br>Java " + System.getProperty("java.version")
-                + " &middot; " + System.getProperty("os.name")
-                + "<br>Console code page: " + com.dogepopcat.cpgui.shell.ConsoleCharset.get().name()
-                + "<br>Licensed under the MIT license.</html>";
-        panel.add(new JLabel(html), BorderLayout.CENTER);
-        JOptionPane.showMessageDialog(this, panel, "About " + AppInfo.NAME,
-                JOptionPane.INFORMATION_MESSAGE);
+                + "<br>" + Msg.ABOUT_SUBTITLE.text()
+                + "<br><br>" + Msg.ABOUT_DETAILS.format(System.getProperty("java.version"),
+                        System.getProperty("os.name"))
+                + "<br>" + Msg.ABOUT_CODEPAGE.format(
+                        com.dogepopcat.cpgui.shell.ConsoleCharset.get().name())
+                + "<br>" + Msg.ABOUT_LICENSE.text() + "</html>";
     }
 
     // --- menu ---------------------------------------------------------------
@@ -330,8 +343,7 @@ public class MainFrame extends JFrame {
     private JMenuBar createMenuBar() {
         JMenuBar bar = new JMenuBar();
 
-        JMenu file = new JMenu("File");
-        file.setMnemonic('F');
+        JMenu file = menu(Msg.MENU_FILE, 'F');
         file.add(item(newTabAction));
         file.add(item(openAction));
         file.addSeparator();
@@ -346,8 +358,7 @@ public class MainFrame extends JFrame {
         file.add(item(exitAction));
         bar.add(file);
 
-        JMenu edit = new JMenu("Edit");
-        edit.setMnemonic('E');
+        JMenu edit = menu(Msg.MENU_EDIT, 'E');
         edit.add(item(undoAction));
         edit.add(item(redoAction));
         edit.addSeparator();
@@ -358,8 +369,7 @@ public class MainFrame extends JFrame {
         edit.add(item(selectAllAction));
         bar.add(edit);
 
-        JMenu run = new JMenu("Run");
-        run.setMnemonic('R');
+        JMenu run = menu(Msg.MENU_RUN, 'R');
         run.add(item(runAction));
         run.add(item(runAllAction));
         run.add(item(runLineAction));
@@ -367,21 +377,71 @@ public class MainFrame extends JFrame {
         run.add(item(stopAction));
         bar.add(run);
 
-        JMenu view = new JMenu("View");
-        view.setMnemonic('V');
+        JMenu view = menu(Msg.MENU_VIEW, 'V');
         view.add(item(clearOutputAction));
         view.addSeparator();
         view.add(item(fontAction));
         view.add(item(largerFontAction));
         view.add(item(smallerFontAction));
+        view.addSeparator();
+        view.add(createLanguageMenu());
         bar.add(view);
 
-        JMenu help = new JMenu("Help");
-        help.setMnemonic('H');
+        JMenu help = menu(Msg.MENU_HELP, 'H');
         help.add(item(aboutAction));
         bar.add(help);
 
         return bar;
+    }
+
+    /** Builds a menu whose title follows the selected language. */
+    private JMenu menu(Msg title, char mnemonic) {
+        JMenu menu = new JMenu(title.text());
+        menu.setMnemonic(mnemonic);
+        localizedMenus.add(new Object[]{menu, title});
+        return menu;
+    }
+
+    /** Builds the language submenu with one radio entry per language. */
+    private JMenu createLanguageMenu() {
+        JMenu language = menu(Msg.MENU_LANGUAGE, 'L');
+        ButtonGroup group = new ButtonGroup();
+        for (Language option : Language.values()) {
+            JRadioButtonMenuItem entry = new JRadioButtonMenuItem(option.displayName());
+            entry.setSelected(Messages.language() == option);
+            entry.addActionListener(e -> {
+                Messages.setLanguage(option);
+                applyLanguage();
+            });
+            group.add(entry);
+            language.add(entry);
+        }
+        language.setIcon(null);
+        return language;
+    }
+
+    /**
+     * Re-applies every localized string after the language changes.
+     *
+     * <p>Actions carry their own names, so updating the action values refreshes
+     * the menus and the tool bar at the same time. Everything else refreshes
+     * itself through its own {@link Messages} listener.</p>
+     */
+    public void applyLanguage() {
+        for (Object[] entry : localizedActions) {
+            Action action = (Action) entry[0];
+            action.putValue(Action.NAME, ((Msg) entry[1]).text());
+            action.putValue(Action.SHORT_DESCRIPTION, ((Msg) entry[2]).text());
+        }
+        for (Object[] entry : localizedMenus) {
+            ((JMenu) entry[0]).setText(((Msg) entry[1]).text());
+        }
+        bottomTabs.setTitleAt(bottomTabs.indexOfComponent(problems), Msg.PROBLEMS_TAB.text());
+        bottomTabs.setTitleAt(bottomTabs.indexOfComponent(console), Msg.OUTPUT_TAB.text());
+        editorTabs.refreshTitles();
+        console.refreshText();
+        statusBar.setMessage(Msg.STATUS_READY.text());
+        statusBar.setMessageColor(null);
     }
 
     private JMenuItem item(Action action) {
@@ -398,7 +458,7 @@ public class MainFrame extends JFrame {
     /** Opens a new editor tab targeting the given interpreter. */
     public EditorTab newTab() {
         EditorTab tab = createTab(ShellKind.CMD);
-        statusBar.setMessage("New tab created");
+        statusBar.setMessage(Msg.STATUS_TAB_CREATED.text());
         return tab;
     }
 
@@ -495,14 +555,14 @@ public class MainFrame extends JFrame {
         if (editorTabs.tabCount() == 0) {
             createTab(ShellKind.CMD);
         }
-        statusBar.setMessage("Tab closed");
+        statusBar.setMessage(Msg.STATUS_TAB_CLOSED.text());
     }
 
     // --- file operations ----------------------------------------------------
 
     /** Asks the user for a script and opens it in a new tab. */
     public void openScript() {
-        javax.swing.JFileChooser chooser = scriptChooser("Open script");
+        javax.swing.JFileChooser chooser = scriptChooser(Msg.DIALOG_OPEN_SCRIPT.text());
         if (chooser.showOpenDialog(this) != javax.swing.JFileChooser.APPROVE_OPTION) {
             return;
         }
@@ -524,9 +584,9 @@ public class MainFrame extends JFrame {
         try {
             content = ScriptFile.read(file);
         } catch (IOException e) {
-            console.appendError("Could not read " + file + ": " + e.getMessage()
+            console.appendError(Msg.ERROR_READ.format(file, e.getMessage())
                     + System.lineSeparator());
-            statusBar.setMessage("Could not open " + file.getName());
+            statusBar.setMessage(Msg.STATUS_CANNOT_OPEN.format(file.getName()));
             return null;
         }
         EditorTab tab = createTab(ScriptFile.shellKindFor(file));
@@ -534,7 +594,7 @@ public class MainFrame extends JFrame {
         tab.setText(content);
         tab.clearDirty();
         editorTabs.refreshTitles();
-        statusBar.setMessage("Opened " + file.getName());
+        statusBar.setMessage(Msg.STATUS_OPENED.format(file.getName()));
         return tab;
     }
 
@@ -564,7 +624,7 @@ public class MainFrame extends JFrame {
             ScriptFile.write(target, tab.getText(), tab.shellKind());
         } catch (ScriptFile.UnrepresentableCharactersException lossy) {
             if (!confirmLossySave(target, lossy)) {
-                statusBar.setMessage("Save cancelled");
+                statusBar.setMessage(Msg.STATUS_SAVE_CANCELLED.text());
                 return false;
             }
             try {
@@ -584,12 +644,12 @@ public class MainFrame extends JFrame {
     }
 
     private boolean reportSaveFailure(File target, IOException e) {
-        console.appendError("Could not save " + target + ": " + e.getMessage()
+        console.appendError(Msg.ERROR_READ.format(target, e.getMessage())
                 + System.lineSeparator());
-        statusBar.setMessage("Could not save " + target.getName());
+        statusBar.setMessage(Msg.STATUS_CANNOT_SAVE.format(target.getName()));
         JOptionPane.showMessageDialog(this,
-                "Could not save the file:\n" + e.getMessage(),
-                "Save failed", JOptionPane.ERROR_MESSAGE);
+                Msg.ERROR_SAVE.format(e.getMessage()),
+                Msg.DIALOG_SAVE_FAILED.text(), JOptionPane.ERROR_MESSAGE);
         return false;
     }
 
@@ -613,15 +673,15 @@ public class MainFrame extends JFrame {
 
     /** Asks for a destination and saves the tab there. */
     public boolean saveTabAs(EditorTab tab) {
-        javax.swing.JFileChooser chooser = scriptChooser("Save script as");
+        javax.swing.JFileChooser chooser = scriptChooser(Msg.DIALOG_SAVE_SCRIPT.text());
         chooser.setSelectedFile(new File(workspace, defaultNameFor(tab)));
         if (chooser.showSaveDialog(this) != javax.swing.JFileChooser.APPROVE_OPTION) {
             return false;
         }
         File target = ensureExtension(chooser.getSelectedFile(), tab.shellKind());
         if (target.exists() && JOptionPane.showConfirmDialog(this,
-                target.getName() + " already exists.\nReplace it?",
-                "Confirm save as", JOptionPane.YES_NO_OPTION,
+                Msg.DIALOG_REPLACE_MESSAGE.format(target.getName()),
+                Msg.DIALOG_REPLACE.text(), JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE) != JOptionPane.YES_OPTION) {
             return false;
         }
@@ -647,11 +707,11 @@ public class MainFrame extends JFrame {
         chooser.setDialogTitle(title);
         chooser.setAcceptAllFileFilterUsed(true);
         chooser.addChoosableFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
-                "Batch scripts (*.cmd, *.bat)", "cmd", "bat"));
+                Msg.FILE_BATCH_FILTER.text(), "cmd", "bat"));
         chooser.addChoosableFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
-                "PowerShell scripts (*.ps1)", "ps1"));
+                Msg.FILE_POWERSHELL_FILTER.text(), "ps1"));
         chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
-                "All scripts (*.cmd, *.bat, *.ps1)", "cmd", "bat", "ps1"));
+                Msg.FILE_ALL_SCRIPTS_FILTER.text(), "cmd", "bat", "ps1"));
         return chooser;
     }
 
@@ -666,8 +726,8 @@ public class MainFrame extends JFrame {
         }
         String name = tab.file() != null ? tab.file().getName() : tab.title();
         int choice = JOptionPane.showConfirmDialog(this,
-                "Save changes to " + name + "?",
-                "Unsaved changes", JOptionPane.YES_NO_CANCEL_OPTION,
+                Msg.DIALOG_SAVE_CHANGES_MESSAGE.format(name),
+                Msg.DIALOG_SAVE_CHANGES.text(), JOptionPane.YES_NO_CANCEL_OPTION,
                 JOptionPane.WARNING_MESSAGE);
         if (choice == JOptionPane.CANCEL_OPTION || choice == JOptionPane.CLOSED_OPTION) {
             return false;
@@ -706,7 +766,7 @@ public class MainFrame extends JFrame {
         // The running interpreter cannot change, so start a fresh session.
         sessions.release(tab);
         statusBar.setShell(kind);
-        statusBar.setMessage("Active tab now targets " + kind.description());
+        statusBar.setMessage(Msg.STATUS_INTERPRETER_SWITCHED.format(kind.description()));
     }
 
     private void zoomEditor(int delta) {
@@ -714,7 +774,7 @@ public class MainFrame extends JFrame {
             java.awt.Font font = tab.textPane().getFont();
             int size = Math.max(9, Math.min(28, font.getSize() + delta));
             tab.setEditorFont(font.deriveFont((float) size));
-            statusBar.setMessage("Editor font " + size + "pt");
+            statusBar.setMessage(Msg.STATUS_EDITOR_FONT.format(size));
         });
     }
 
@@ -725,13 +785,13 @@ public class MainFrame extends JFrame {
         java.util.Optional<FontChooserDialog.Result> choice = FontChooserDialog.show(
                 this, FontChooserDialog.Target.EDITOR, current);
         if (choice.isEmpty()) {
-            statusBar.setMessage("Fonts unchanged");
+            statusBar.setMessage(Msg.STATUS_FONTS_UNCHANGED.text());
             return;
         }
         FontChooserDialog.Result result = choice.get();
         applyFont(result.target(), result.font());
-        statusBar.setMessage(result.target() + " font: "
-                + result.font().getFamily() + " " + result.font().getSize() + "pt");
+        statusBar.setMessage(Msg.STATUS_FONT_CHANGED.format(result.target(),
+                result.font().getFamily(), result.font().getSize()));
     }
 
     /**
@@ -797,7 +857,7 @@ public class MainFrame extends JFrame {
             int last = first + countNewlines(command.text());
             if (caretLine >= first && caretLine <= last) {
                 if (!command.executable()) {
-                    statusBar.setMessage("This line is a comment or blank");
+                    statusBar.setMessage(Msg.STATUS_COMMENT_LINE.text());
                     return;
                 }
                 execute(tab, command.text());
@@ -820,17 +880,15 @@ public class MainFrame extends JFrame {
     /** Sends a script to the active tab's interpreter. */
     private void execute(EditorTab tab, String script) {
         if (script == null || script.isBlank()) {
-            statusBar.setMessage("Nothing to run");
+            statusBar.setMessage(Msg.STATUS_NOTHING_TO_RUN.text());
             return;
         }
 
         List<Finding> dangers = DangerAnalyzer.dangers(tab.shellKind(), script);
         if (!dangers.isEmpty() && !confirmation.confirm(dangers, script)) {
-            console.appendSystem("[run cancelled: "
-                    + dangers.size()
-                    + (dangers.size() == 1 ? " dangerous command was" : " dangerous commands were")
-                    + " not confirmed]" + System.lineSeparator());
-            statusBar.setMessage("Run cancelled");
+            console.appendSystem(Msg.STATUS_RUN_CANCELLED_DANGER.format(dangers.size(),
+                    dangers.size() == 1 ? "" : "s") + System.lineSeparator());
+            statusBar.setMessage(Msg.STATUS_RUN_CANCELLED.text());
             statusBar.setMessageColor(Theme.WARNING);
             return;
         }
@@ -840,14 +898,14 @@ public class MainFrame extends JFrame {
             session = sessions.acquire(tab, tab.shellKind(), workspace,
                     new ConsoleSessionListener(tab));
         } catch (IOException e) {
-            console.appendError("Failed to start " + tab.shellKind().executable()
-                    + ": " + e.getMessage() + System.lineSeparator());
-            statusBar.setMessage("Could not start " + tab.shellKind().displayName());
+            console.appendError(tab.shellKind().executable() + ": "
+                    + e.getMessage() + System.lineSeparator());
+            statusBar.setMessage(Msg.STATUS_CANNOT_START.format(tab.shellKind().displayName()));
             return;
         }
 
         if (session.isBusy()) {
-            statusBar.setMessage("A command is already running in this tab");
+            statusBar.setMessage(Msg.STATUS_BUSY.text());
             return;
         }
 
@@ -861,7 +919,7 @@ public class MainFrame extends JFrame {
                     + " (pid " + session.pid() + ") \u2026");
         } catch (IllegalStateException e) {
             console.appendError(e.getMessage() + System.lineSeparator());
-            statusBar.setMessage("Could not run the script");
+            statusBar.setMessage(Msg.STATUS_CANNOT_RUN.text());
         }
     }
 
@@ -898,27 +956,22 @@ public class MainFrame extends JFrame {
      */
     private boolean askAboutDangerousCommands(List<Finding> dangers, String script) {
         StringBuilder text = new StringBuilder();
-        text.append("<html><b>This script contains ")
-                .append(dangers.size())
-                .append(dangers.size() == 1 ? " destructive command" : " destructive commands")
-                .append(".</b><br><br>");
+        text.append(dangers.size() == 1
+                ? Msg.DANGER_HEADER_ONE.text()
+                : Msg.DANGER_HEADER_MANY.format(dangers.size()));
         for (Finding danger : dangers) {
-            text.append("<b>Line ").append(danger.lineIndex() + 1).append(":</b> ")
-                    .append(escapeHtml(danger.message())).append("<br>");
-            text.append("<font color='#666666'>&nbsp;&nbsp;&nbsp;&nbsp;")
-                    .append(escapeHtml(danger.snippet()))
-                    .append("</font><br>");
-            text.append("<font color='#666666'>&nbsp;&nbsp;&nbsp;&nbsp;\u2192 ")
-                    .append(escapeHtml(danger.advice()))
-                    .append("</font><br><br>");
+            text.append(Msg.DANGER_LINE.format(danger.lineIndex() + 1,
+                    escapeHtml(danger.message())));
+            text.append(Msg.DANGER_SNIPPET.format(escapeHtml(danger.snippet())));
+            text.append(Msg.DANGER_ADVICE.format(escapeHtml(danger.advice())));
         }
-        text.append("Run it anyway?</html>");
+        text.append(Msg.DANGER_FOOTER.text());
 
         JLabel message = new JLabel(text.toString());
         message.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
 
-        Object[] options = {"Run anyway", "Cancel"};
-        int choice = JOptionPane.showOptionDialog(this, message, "Dangerous command",
+        Object[] options = {Msg.RUN_ANYWAY.text(), Msg.CANCEL.text()};
+        int choice = JOptionPane.showOptionDialog(this, message, Msg.DIALOG_DANGER_TITLE.text(),
                 JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE, null,
                 options, options[1]);
         return choice == 0;
@@ -935,12 +988,12 @@ public class MainFrame extends JFrame {
         }
         ShellSession session = sessions.peek(tab);
         if (session == null) {
-            statusBar.setMessage("No running session in this tab");
+            statusBar.setMessage(Msg.STATUS_NO_SESSION.text());
             return;
         }
         sessions.release(tab);
-        console.appendSystem("[session stopped]" + System.lineSeparator());
-        statusBar.setMessage("Session stopped");
+        console.appendSystem(Msg.STATUS_SESSION_STOPPED.text() + System.lineSeparator());
+        statusBar.setMessage(Msg.STATUS_SESSION_STOPPED_OK.text());
     }
 
     /**
@@ -949,17 +1002,17 @@ public class MainFrame extends JFrame {
      */
     public void chooseWorkspace() {
         javax.swing.JFileChooser chooser = new javax.swing.JFileChooser(workspace);
-        chooser.setDialogTitle("Select workspace folder");
+        chooser.setDialogTitle(Msg.DIALOG_CHOOSE_FOLDER.text());
         chooser.setFileSelectionMode(javax.swing.JFileChooser.DIRECTORIES_ONLY);
         chooser.setAcceptAllFileFilterUsed(false);
-        chooser.setApproveButtonText("Use this folder");
+        chooser.setApproveButtonText(Msg.DIALOG_USE_FOLDER.text());
         if (chooser.showOpenDialog(this) != javax.swing.JFileChooser.APPROVE_OPTION) {
-            statusBar.setMessage("Workspace unchanged");
+            statusBar.setMessage(Msg.STATUS_WORKSPACE_UNCHANGED.text());
             return;
         }
         File selected = chooser.getSelectedFile();
         if (selected == null || !selected.isDirectory()) {
-            statusBar.setMessage("Workspace unchanged");
+            statusBar.setMessage(Msg.STATUS_WORKSPACE_UNCHANGED.text());
             return;
         }
         setWorkspace(selected);
@@ -985,7 +1038,7 @@ public class MainFrame extends JFrame {
                     "System folder", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
             if (choice != JOptionPane.YES_OPTION) {
                 locationBar.showRejected("refused");
-                statusBar.setMessage("Workspace unchanged");
+                statusBar.setMessage(Msg.STATUS_WORKSPACE_UNCHANGED.text());
                 return;
             }
         }
@@ -1025,7 +1078,7 @@ public class MainFrame extends JFrame {
     private void applyTypedDirectory(File directory) {
         if (directory == null || !directory.isDirectory()) {
             locationBar.showRejected("not found");
-            statusBar.setMessage("Not a directory: " + directory);
+            statusBar.setMessage(Msg.STATUS_NOT_A_DIRECTORY.format(directory));
             return;
         }
         setWorkspace(directory);
@@ -1163,31 +1216,24 @@ public class MainFrame extends JFrame {
     public void requestAdministratorMode() {
         if (elevated) {
             JOptionPane.showMessageDialog(this,
-                    "This window is already running with administrator rights.\n\n"
-                            + "The elevated window is the one with the highlighted "
-                            + "Administrator button.",
-                    "Administrator mode", JOptionPane.INFORMATION_MESSAGE);
+                    Msg.DIALOG_ADMIN_ALREADY.text(),
+                    Msg.DIALOG_ADMIN_TITLE.text(), JOptionPane.INFORMATION_MESSAGE);
             return;
         }
 
         List<String> command = com.dogepopcat.cpgui.util.CommandLine.currentProcess();
         if (command.size() < 2) {
-            console.appendError("Could not work out how this program was started, so an "
-                    + "elevated copy cannot be started." + System.lineSeparator());
-            statusBar.setMessage("Administrator restart unavailable");
+            console.appendError(Msg.DIALOG_ADMIN_NO_COMMAND.text() + System.lineSeparator());
+            statusBar.setMessage(Msg.STATUS_ADMIN_UNAVAILABLE.text());
             return;
         }
 
         int choice = JOptionPane.showConfirmDialog(this,
-                "Windows will ask for permission to open a second window with "
-                        + "administrator rights.\n\n"
-                        + "This window stays open. The elevated window starts in "
-                        + workspace.getAbsolutePath() + " and its Administrator button "
-                        + "is highlighted.\n\nContinue?",
-                "Open an elevated window", JOptionPane.OK_CANCEL_OPTION,
+                Msg.DIALOG_ADMIN_CONFIRM.format(workspace.getAbsolutePath()),
+                Msg.DIALOG_ADMIN_TITLE.text(), JOptionPane.OK_CANCEL_OPTION,
                 JOptionPane.QUESTION_MESSAGE);
         if (choice != JOptionPane.OK_OPTION) {
-            statusBar.setMessage("Administrator window cancelled");
+            statusBar.setMessage(Msg.STATUS_ADMIN_CANCELLED.text());
             return;
         }
 
@@ -1211,26 +1257,25 @@ public class MainFrame extends JFrame {
             if (exit != 0) {
                 console.appendError("The elevated window could not be started: "
                         + output.strip() + System.lineSeparator());
-                statusBar.setMessage("Administrator window was refused");
+                statusBar.setMessage(Msg.STATUS_ADMIN_REFUSED.text());
                 JOptionPane.showMessageDialog(this,
-                        "The elevated window could not be started.\n\n"
-                                + "This usually means the permission prompt was dismissed.",
-                        "Administrator mode", JOptionPane.WARNING_MESSAGE);
+                        Msg.DIALOG_ADMIN_REFUSED.text(),
+                        Msg.DIALOG_ADMIN_TITLE.text(), JOptionPane.WARNING_MESSAGE);
                 return;
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return;
         } catch (IOException e) {
-            console.appendError("The elevated window could not be started: " + e.getMessage()
+            console.appendError(Msg.DIALOG_ADMIN_TITLE.text() + ": " + e.getMessage()
                     + System.lineSeparator());
-            statusBar.setMessage("Administrator window failed");
+            statusBar.setMessage(Msg.STATUS_ADMIN_FAILED.text());
             return;
         }
 
-        console.appendSystem("[an elevated window was started; this one keeps running]"
+        console.appendSystem(Msg.STATUS_ELEVATED_KEEPS_RUNNING.text()
                 + System.lineSeparator());
-        statusBar.setMessage("Elevated window started");
+        statusBar.setMessage(Msg.STATUS_ADMIN_STARTED.text());
     }
 
     /**
@@ -1262,13 +1307,14 @@ public class MainFrame extends JFrame {
         @Override
         public void onFinished(int exitCode, boolean success) {
             String summary = success
-                    ? String.format("[%s finished, exit code %d]",
-                            tab.shellKind().displayName(), exitCode)
-                    : String.format("[%s reported a failure, exit code %d]",
-                            tab.shellKind().displayName(), exitCode);
+                    ? Msg.RUN_FINISHED.format(tab.shellKind().displayName(), exitCode)
+                    : Msg.RUN_FAILED.format(tab.shellKind().displayName(), exitCode);
             console.append(summary + System.lineSeparator(),
                     success ? Theme.CONSOLE_INFO : Theme.ERROR);
             SwingUtilities.invokeLater(() -> {
+                statusBar.setMessage(success
+                        ? Msg.STATUS_FINISHED.format(exitCode)
+                        : Msg.STATUS_FINISHED_ERROR.format(exitCode));
                 statusBar.setMessage(success
                         ? "Finished, exit code " + exitCode
                         : "Finished with an error, exit code " + exitCode);
@@ -1279,8 +1325,8 @@ public class MainFrame extends JFrame {
 
         @Override
         public void onClosed(int exitCode) {
-            console.appendSystem("[" + tab.shellKind().displayName()
-                    + " session ended, exit code " + exitCode + "]" + System.lineSeparator());
+            console.appendSystem(Msg.STATUS_SESSION_CLOSED.format(
+                    tab.shellKind().displayName(), exitCode) + System.lineSeparator());
         }
 
         @Override
@@ -1306,14 +1352,21 @@ public class MainFrame extends JFrame {
         return statusBar;
     }
 
-    /** Selects a tab in the bottom pane by its title. */
-    public void selectBottomTab(String title) {
-        for (int i = 0; i < bottomTabs.getTabCount(); i++) {
-            if (title.equals(bottomTabs.getTitleAt(i))) {
-                bottomTabs.setSelectedIndex(i);
-                return;
-            }
-        }
+    /**
+     * Selects a tab in the bottom pane.
+     *
+     * @param which the pane to show
+     */
+    public void selectBottomTab(BottomTab which) {
+        bottomTabs.setSelectedIndex(which == BottomTab.PROBLEMS
+                ? bottomTabs.indexOfComponent(problems)
+                : bottomTabs.indexOfComponent(console));
+    }
+
+    /** The two panes at the bottom of the window. */
+    public enum BottomTab {
+        PROBLEMS,
+        OUTPUT
     }
 
     /** @return the split pane separating editor and console. */

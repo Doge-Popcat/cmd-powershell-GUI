@@ -1,5 +1,8 @@
 package com.dogepopcat.cpgui.ui;
 
+import com.dogepopcat.cpgui.i18n.Messages;
+import com.dogepopcat.cpgui.i18n.Msg;
+
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -27,13 +30,15 @@ public class LocationBar extends JPanel {
 
     private final JTextField path = new JTextField();
     private final JLabel state = new JLabel();
-    private final JButton browse = new JButton("Change\u2026");
+    private final JLabel caption = new JLabel();
+    private final JButton browse = new JButton();
     private final JButton up = new JButton("\u2191");
 
     private Consumer<File> directoryConsumer = directory -> { };
     private Runnable browseAction = () -> { };
     private File current;
     private boolean live;
+    private boolean rejected;
 
     public LocationBar() {
         super(new BorderLayout(6, 0));
@@ -41,15 +46,14 @@ public class LocationBar extends JPanel {
                 BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.tint(Theme.GUTTER_BACKGROUND, 40)),
                 BorderFactory.createEmptyBorder(3, 6, 3, 6)));
 
-        JLabel caption = new JLabel("Working directory:");
         caption.setFont(caption.getFont().deriveFont(java.awt.Font.BOLD));
 
         path.setFont(Theme.mono(12));
-        path.setToolTipText("Type a path and press Enter, or use Change\u2026 to browse");
         path.addActionListener(e -> commitTypedPath());
         path.addFocusListener(new FocusAdapter() {
             @Override
             public void focusLost(FocusEvent e) {
+                rejected = false;
                 show(current);
             }
         });
@@ -57,11 +61,9 @@ public class LocationBar extends JPanel {
         up.setFont(Theme.mono(12));
         up.setMargin(new java.awt.Insets(0, 6, 0, 6));
         up.setFocusable(false);
-        up.setToolTipText("Go to the parent folder");
         up.addActionListener(e -> goUp());
 
         browse.setFocusable(false);
-        browse.setToolTipText("Choose the working directory");
         browse.addActionListener(e -> browseAction.run());
 
         JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
@@ -74,7 +76,23 @@ public class LocationBar extends JPanel {
 
         add(left, BorderLayout.WEST);
         path.setPreferredSize(new Dimension(420, 24));
+        Messages.addListener(language -> refreshText());
+        refreshText();
         show(null);
+    }
+
+    /** Re-applies every label after a language change. */
+    private void refreshText() {
+        caption.setText(Msg.LOCATION_CAPTION.text());
+        browse.setText(Msg.LOCATION_CHANGE.text());
+        browse.setToolTipText(Msg.LOCATION_CHANGE_TIP.text());
+        up.setToolTipText(Msg.LOCATION_UP_TIP.text());
+        path.setToolTipText(Msg.LOCATION_PATH_TIP.text());
+        if (rejected) {
+            state.setText(Msg.LOCATION_REFUSED.text());
+            return;
+        }
+        show(current);
     }
 
     /**
@@ -87,6 +105,7 @@ public class LocationBar extends JPanel {
     public void setDirectory(File directory, boolean live) {
         this.current = directory;
         this.live = live;
+        this.rejected = false;
         show(directory);
     }
 
@@ -96,11 +115,11 @@ public class LocationBar extends JPanel {
             state.setText("");
             return;
         }
-        state.setText(live ? "(live)" : "(startup)");
+        state.setText(live ? Msg.LOCATION_LIVE.text() : Msg.LOCATION_STARTUP.text());
         state.setForeground(live ? Theme.OK : Theme.CONSOLE_INFO);
         state.setToolTipText(live
-                ? "Reported by the running interpreter"
-                : "Directory new sessions will start in");
+                ? Msg.LOCATION_LIVE_TIP.text()
+                : Msg.LOCATION_STARTUP_TIP.text());
     }
 
     /** Registers the receiver for a directory the user typed or browsed to. */
@@ -127,7 +146,7 @@ public class LocationBar extends JPanel {
         }
         File candidate = new File(text);
         if (!candidate.isDirectory()) {
-            state.setText("(not found)");
+            state.setText(Msg.LOCATION_NOT_FOUND.text());
             state.setForeground(Theme.ERROR);
             return;
         }
@@ -156,7 +175,8 @@ public class LocationBar extends JPanel {
 
     /** Shows why a directory was refused, in place of the live/startup chip. */
     public void showRejected(String reason) {
-        state.setText("(" + reason + ")");
+        rejected = true;
+        state.setText(Msg.LOCATION_REFUSED.text());
         state.setForeground(Theme.ERROR);
     }
 }

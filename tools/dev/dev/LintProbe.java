@@ -25,6 +25,8 @@ public final class LintProbe {
     }
 
     public static void main(String[] args) {
+        // Pin the language so assertions do not depend on the machine locale.
+        com.dogepopcat.cpgui.i18n.Messages.setLanguage(com.dogepopcat.cpgui.i18n.Language.ENGLISH);
         System.out.println("typos are reported");
         expectUnknown(ShellKind.CMD, "exyzxo");
         expectUnknown(ShellKind.CMD, "exyzxo /b");

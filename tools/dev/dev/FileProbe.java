@@ -37,6 +37,8 @@ public final class FileProbe {
     }
 
     public static void main(String[] args) throws Exception {
+        // Pin the language so assertions do not depend on the machine locale.
+        com.dogepopcat.cpgui.i18n.Messages.setLanguage(com.dogepopcat.cpgui.i18n.Language.ENGLISH);
         File scratch = new File("build/scratch");
         Files.createDirectories(scratch.toPath());
 

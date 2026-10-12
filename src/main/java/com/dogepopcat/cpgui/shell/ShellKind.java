@@ -1,22 +1,24 @@
 package com.dogepopcat.cpgui.shell;
 
+import com.dogepopcat.cpgui.i18n.Msg;
+
 /**
  * The command interpreter a session is backed by.
  */
 public enum ShellKind {
 
     /** The classic Windows command interpreter, {@code cmd.exe}. */
-    CMD("CMD", "cmd.exe", "Command Prompt", "cmd"),
+    CMD(Msg.SHELL_CMD, "cmd.exe", Msg.SHELL_CMD_DESCRIPTION, "cmd"),
 
     /** Windows PowerShell 5.1, {@code powershell.exe}. */
-    POWERSHELL("PowerShell", "powershell.exe", "Windows PowerShell", "ps1");
+    POWERSHELL(Msg.SHELL_POWERSHELL, "powershell.exe", Msg.SHELL_POWERSHELL_DESCRIPTION, "ps1");
 
-    private final String displayName;
+    private final Msg displayName;
     private final String executable;
-    private final String description;
+    private final Msg description;
     private final String fileExtension;
 
-    ShellKind(String displayName, String executable, String description, String fileExtension) {
+    ShellKind(Msg displayName, String executable, Msg description, String fileExtension) {
         this.displayName = displayName;
         this.executable = executable;
         this.description = description;
@@ -25,7 +27,7 @@ public enum ShellKind {
 
     /** Short label used in tabs, the tool bar and the status bar. */
     public String displayName() {
-        return displayName;
+        return displayName.text();
     }
 
     /** Name of the interpreter executable as found on {@code PATH}. */
@@ -35,7 +37,7 @@ public enum ShellKind {
 
     /** Longer human readable name for tool tips and the about box. */
     public String description() {
-        return description;
+        return description.text();
     }
 
     /** Default file extension, without the dot, for scripts of this kind. */
@@ -50,6 +52,6 @@ public enum ShellKind {
 
     @Override
     public String toString() {
-        return displayName;
+        return displayName();
     }
 }

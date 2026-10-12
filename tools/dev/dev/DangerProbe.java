@@ -28,6 +28,8 @@ public final class DangerProbe {
     }
 
     public static void main(String[] args) throws Exception {
+        // Pin the language so assertions do not depend on the machine locale.
+        com.dogepopcat.cpgui.i18n.Messages.setLanguage(com.dogepopcat.cpgui.i18n.Language.ENGLISH);
         MainFrame[] holder = new MainFrame[1];
         SwingUtilities.invokeAndWait(() -> {
             holder[0] = new MainFrame();
