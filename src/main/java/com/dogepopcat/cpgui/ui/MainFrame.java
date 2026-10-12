@@ -106,6 +106,11 @@ public class MainFrame extends JFrame {
             KeyStroke.getKeyStroke(KeyEvent.VK_F2, 0),
             e -> stopActiveSession());
 
+    private final Action workspaceAction = action("Workspace\u2026",
+            "Choose the working directory (the graphical cd command)",
+            KeyStroke.getKeyStroke(KeyEvent.VK_K, InputEvent.CTRL_DOWN_MASK),
+            e -> chooseWorkspace());
+
     private final Action aboutAction = action("About", null, null, e -> showAbout());
 
     public MainFrame() {
@@ -222,6 +227,8 @@ public class MainFrame extends JFrame {
         file.setMnemonic('F');
         file.add(item(newTabAction));
         file.add(item(closeTabAction));
+        file.addSeparator();
+        file.add(item(workspaceAction));
         file.addSeparator();
         file.add(item(exitAction));
         bar.add(file);
@@ -386,8 +393,7 @@ public class MainFrame extends JFrame {
     }
 
     /** Stops the active tab's interpreter, discarding its state. */
-    public void stopActiveSession() {
-        EditorTab tab = editorTabs.current();
+    public void stopActiveSession() {        EditorTab tab = editorTabs.current();
         if (tab == null) {
             return;
         }
@@ -401,9 +407,79 @@ public class MainFrame extends JFrame {
         statusBar.setMessage("Session stopped");
     }
 
+    /**
+     * Asks the user for a working directory and applies it everywhere: new
+     * sessions start there and every live session is told to change into it.
+     */
+    public void chooseWorkspace() {
+        javax.swing.JFileChooser chooser = new javax.swing.JFileChooser(workspace);
+        chooser.setDialogTitle("Select workspace folder");
+        chooser.setFileSelectionMode(javax.swing.JFileChooser.DIRECTORIES_ONLY);
+        chooser.setAcceptAllFileFilterUsed(false);
+        chooser.setApproveButtonText("Use this folder");
+        if (chooser.showOpenDialog(this) != javax.swing.JFileChooser.APPROVE_OPTION) {
+            statusBar.setMessage("Workspace unchanged");
+            return;
+        }
+        File selected = chooser.getSelectedFile();
+        if (selected == null || !selected.isDirectory()) {
+            statusBar.setMessage("Workspace unchanged");
+            return;
+        }
+        setWorkspace(selected);
+    }
+
+    /**
+     * Changes the working directory and pushes the equivalent {@code cd} into
+     * every idle session.
+     *
+     * @param directory the new working directory
+     */
+    public void setWorkspace(File directory) {
+        if (directory == null || !directory.isDirectory()) {
+            return;
+        }
+        this.workspace = directory;
+        statusBar.setWorkspace(directory);
+
+        int updated = 0;
+        for (EditorTab tab : editorTabs.tabs()) {
+            ShellSession session = sessions.peek(tab);
+            if (session == null || !session.isAlive() || session.isBusy()) {
+                continue;
+            }
+            String command = changeDirectoryCommand(tab.shellKind(), directory);
+            console.append(promptName(tab.shellKind()) + "> " + command + System.lineSeparator(),
+                    Theme.CONSOLE_COMMAND);
+            try {
+                session.run(command);
+                updated++;
+            } catch (IllegalStateException e) {
+                console.appendError(e.getMessage() + System.lineSeparator());
+            }
+        }
+        statusBar.setMessage(updated == 0
+                ? "Workspace set to " + directory.getAbsolutePath()
+                : "Workspace set and applied to " + updated + " session(s)");
+    }
+
+    private String promptName(ShellKind kind) {
+        return kind == ShellKind.CMD ? "CMD" : "PS";
+    }
+
+    /** Builds the interpreter specific command that changes directory. */
+    private String changeDirectoryCommand(ShellKind kind, File directory) {
+        if (kind == ShellKind.CMD) {
+            return "cd /d \"" + directory.getAbsolutePath() + "\"";
+        }
+        // Single quotes keep PowerShell from expanding $ and [] in file names.
+        return "Set-Location -LiteralPath '"
+                + directory.getAbsolutePath().replace("'", "''") + "'";
+    }
+
     /** Writes the script to the console prefixed like an interactive prompt. */
     private void echoScript(EditorTab tab, String script) {
-        String prompt = tab.shellKind() == ShellKind.CMD ? "CMD>" : "PS>";
+        String prompt = promptName(tab.shellKind()) + ">";
         StringBuilder text = new StringBuilder();
         for (String line : script.split("\\R", -1)) {
             if (!line.isBlank()) {
@@ -542,5 +618,9 @@ public class MainFrame extends JFrame {
 
     public Action stopAction() {
         return stopAction;
+    }
+
+    public Action workspaceAction() {
+        return workspaceAction;
     }
 }

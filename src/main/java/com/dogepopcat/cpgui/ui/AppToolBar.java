@@ -41,6 +41,9 @@ public class AppToolBar extends JToolBar {
         add(button(frame.stopAction()));
         addSeparator(new Dimension(10, 0));
 
+        add(button(frame.workspaceAction()));
+        addSeparator(new Dimension(10, 0));
+
         add(Box.createHorizontalGlue());
         add(new JLabel("Interpreter: "));
         interpreter.setMaximumSize(new Dimension(150, 26));
