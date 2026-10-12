@@ -55,6 +55,9 @@ public class MainFrame extends JFrame {
     /** Share of the window height given to the editor on first layout. */
     private static final double EDITOR_SHARE = 0.68;
 
+    /** Width of the file tree when it is shown, in pixels. */
+    private static final int EXPLORER_WIDTH = 280;
+
     private final EditorTabs editorTabs = new EditorTabs();
     private final ConsolePane console = new ConsolePane();
     private final StatusBar statusBar = new StatusBar();
@@ -66,6 +69,8 @@ public class MainFrame extends JFrame {
     private File workspace = WorkspacePolicy.defaultWorkspace();
     private AppToolBar toolBar;
     private final LocationBar locationBar = new LocationBar();
+    private final FileExplorer explorer = new FileExplorer();
+    private JSplitPane horizontalSplit;
     private volatile boolean elevated;
     private boolean dividerPlaced;
     /** The font every editor tab uses; new tabs inherit it. */
@@ -170,6 +175,11 @@ public class MainFrame extends JFrame {
     private final Action adminAction = action(Msg.ACTION_ADMIN, Msg.TIP_ADMIN,
             null, e -> requestAdministratorMode());
 
+    private final Action explorerAction = action(Msg.ACTION_EXPLORER, Msg.TIP_EXPLORER,
+            KeyStroke.getKeyStroke(KeyEvent.VK_E, InputEvent.CTRL_DOWN_MASK
+                    | InputEvent.SHIFT_DOWN_MASK),
+            e -> toggleExplorer());
+
     private final Action aboutAction = action(Msg.ACTION_ABOUT, Msg.TIP_ABOUT, null, e -> showAbout());
 
     public MainFrame() {
@@ -230,9 +240,19 @@ public class MainFrame extends JFrame {
         north.add(toolBar, BorderLayout.NORTH);
         north.add(locationBar, BorderLayout.SOUTH);
 
+        // The file tree sits beside the editor and can be hidden from the View menu.
+        explorer.setOpenHandler(this::openFile);
+        explorer.setWorkspaceHandler(this::setWorkspace);
+        explorer.setRootDirectory(workspace);
+        horizontalSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, explorer, splitPane);
+        horizontalSplit.setResizeWeight(0);
+        horizontalSplit.setDividerSize(6);
+        horizontalSplit.setBorder(BorderFactory.createEmptyBorder());
+        horizontalSplit.setContinuousLayout(true);
+
         setJMenuBar(createMenuBar());
         add(north, BorderLayout.NORTH);
-        add(splitPane, BorderLayout.CENTER);
+        add(horizontalSplit, BorderLayout.CENTER);
         add(statusBar, BorderLayout.SOUTH);
 
         statusBar.setWorkspace(workspace);
@@ -386,6 +406,8 @@ public class MainFrame extends JFrame {
         bar.add(run);
 
         JMenu view = menu(Msg.MENU_VIEW, 'V');
+        view.add(item(explorerAction));
+        view.addSeparator();
         view.add(item(clearOutputAction));
         view.addSeparator();
         view.add(item(fontAction));
@@ -444,6 +466,24 @@ public class MainFrame extends JFrame {
             theme.add(entry);
         }
         return theme;
+    }
+
+    /** Shows or hides the file tree beside the editor. */
+    public void toggleExplorer() {
+        boolean visible = !explorer.isVisible();
+        explorer.setVisible(visible);
+        horizontalSplit.setDividerLocation(visible ? EXPLORER_WIDTH : 0);
+        horizontalSplit.setDividerSize(visible ? 6 : 0);
+        horizontalSplit.revalidate();
+        horizontalSplit.repaint();
+        statusBar.setMessage(visible
+                ? Msg.STATUS_EXPLORER_SHOWN.text()
+                : Msg.STATUS_EXPLORER_HIDDEN.text());
+    }
+
+    /** @return the file tree panel. */
+    public FileExplorer explorer() {
+        return explorer;
     }
 
     /** Re-applies the palette to the window chrome after a theme change. */
