@@ -1,8 +1,12 @@
 package com.dogepopcat.cpgui.ui;
 
 import com.dogepopcat.cpgui.AppInfo;
+import com.dogepopcat.cpgui.shell.SessionRegistry;
 import com.dogepopcat.cpgui.shell.ShellKind;
+import com.dogepopcat.cpgui.shell.ShellSession;
 
+import javax.swing.AbstractAction;
+import javax.swing.Action;
 import javax.swing.BorderFactory;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -14,17 +18,23 @@ import javax.swing.JPanel;
 import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
 import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
+import java.awt.event.ActionEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.io.File;
+import java.io.IOException;
+import java.util.function.Consumer;
 
 /**
  * The application main window.
  *
- * <p>Layout: a menu bar, a vertically split work area (editor tabs on top,
- * console below) and a status bar. Tool bar buttons and the execution engine
- * are layered on in subsequent commits.</p>
+ * <p>Layout: menu bar, tool bar, a vertically split work area (editor tabs on
+ * top, console below) and a status bar.</p>
  */
 public class MainFrame extends JFrame {
 
@@ -35,10 +45,72 @@ public class MainFrame extends JFrame {
     private final StatusBar statusBar = new StatusBar();
     private final JTabbedPane bottomTabs = new JTabbedPane();
     private final JSplitPane splitPane;
+    private final SessionRegistry sessions = new SessionRegistry();
+
+    private File workspace = new File(System.getProperty("user.dir"));
+    private AppToolBar toolBar;
+
+    // --- actions -----------------------------------------------------------
+
+    private final Action newTabAction = action("New Tab", "Create a new script tab",
+            KeyStroke.getKeyStroke(KeyEvent.VK_T, InputEvent.CTRL_DOWN_MASK),
+            e -> newTab());
+
+    private final Action closeTabAction = action("Close Tab", "Close the active script tab",
+            KeyStroke.getKeyStroke(KeyEvent.VK_W, InputEvent.CTRL_DOWN_MASK),
+            e -> closeTab(editorTabs.getSelectedIndex()));
+
+    private final Action exitAction = action("Exit", "Quit the application", null,
+            e -> dispatchClose());
+
+    private final Action undoAction = action("Undo", "Undo the last edit",
+            KeyStroke.getKeyStroke(KeyEvent.VK_Z, InputEvent.CTRL_DOWN_MASK),
+            e -> withEditor(tab -> trigger(tab, "cpgui.undo")));
+
+    private final Action redoAction = action("Redo", "Redo the last undone edit",
+            KeyStroke.getKeyStroke(KeyEvent.VK_Y, InputEvent.CTRL_DOWN_MASK),
+            e -> withEditor(tab -> trigger(tab, "cpgui.redo")));
+
+    private final Action cutAction = action("Cut", "Cut the selection to the clipboard",
+            KeyStroke.getKeyStroke(KeyEvent.VK_X, InputEvent.CTRL_DOWN_MASK),
+            e -> withEditor(tab -> tab.textPane().cut()));
+
+    private final Action copyAction = action("Copy", "Copy the selection to the clipboard",
+            KeyStroke.getKeyStroke(KeyEvent.VK_C, InputEvent.CTRL_DOWN_MASK),
+            e -> withEditor(tab -> tab.textPane().copy()));
+
+    private final Action pasteAction = action("Paste", "Paste the clipboard into the editor",
+            KeyStroke.getKeyStroke(KeyEvent.VK_V, InputEvent.CTRL_DOWN_MASK),
+            e -> withEditor(tab -> tab.textPane().paste()));
+
+    private final Action selectAllAction = action("Select All", "Select the whole script",
+            KeyStroke.getKeyStroke(KeyEvent.VK_A, InputEvent.CTRL_DOWN_MASK),
+            e -> withEditor(tab -> tab.textPane().selectAll()));
+
+    private final Action clearOutputAction = action("Clear Output", "Remove all console output",
+            null, e -> console.clear());
+
+    private final Action largerFontAction = action("Larger Editor Font", null,
+            KeyStroke.getKeyStroke(KeyEvent.VK_EQUALS, InputEvent.CTRL_DOWN_MASK),
+            e -> zoomEditor(1));
+
+    private final Action smallerFontAction = action("Smaller Editor Font", null,
+            KeyStroke.getKeyStroke(KeyEvent.VK_MINUS, InputEvent.CTRL_DOWN_MASK),
+            e -> zoomEditor(-1));
+
+    private final Action runAction = action("Run", "Run the script in the active tab (Ctrl+Enter)",
+            KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, InputEvent.CTRL_DOWN_MASK),
+            e -> runActiveScript());
+
+    private final Action stopAction = action("Stop", "Stop the active tab's interpreter",
+            KeyStroke.getKeyStroke(KeyEvent.VK_F2, 0),
+            e -> stopActiveSession());
+
+    private final Action aboutAction = action("About", null, null, e -> showAbout());
 
     public MainFrame() {
         super(AppInfo.title());
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         setMinimumSize(new Dimension(760, 500));
 
         editorTabs.setSelectionListener(index -> activeTabChanged());
@@ -52,13 +124,16 @@ public class MainFrame extends JFrame {
         splitPane.setBorder(BorderFactory.createEmptyBorder());
         splitPane.setContinuousLayout(true);
 
+        toolBar = new AppToolBar(this);
+
         setJMenuBar(createMenuBar());
+        add(toolBar, BorderLayout.NORTH);
         add(splitPane, BorderLayout.CENTER);
         add(statusBar, BorderLayout.SOUTH);
 
-        statusBar.setElevated(isElevated());
-        statusBar.setWorkspace(new java.io.File(System.getProperty("user.dir")));
+        statusBar.setWorkspace(workspace);
         statusBar.setShell(ShellKind.CMD);
+        detectElevationAsync();
 
         setIconImages(java.util.List.of(
                 Icons.appIcon(16), Icons.appIcon(32), Icons.appIcon(64), Icons.appIcon(256)));
@@ -66,102 +141,62 @@ public class MainFrame extends JFrame {
         setSize(1120, 740);
         setLocationRelativeTo(null);
 
-        createTab(ShellKind.CMD);
-        greet();
-    }
-
-    /**
-     * Creates a tab and wires the listeners the frame needs on it.
-     *
-     * @param shellKind interpreter the new script targets
-     * @return the new tab
-     */
-    private EditorTab createTab(ShellKind shellKind) {
-        EditorTab tab = editorTabs.newTab(shellKind);
-        tab.textPane().addCaretListener(e -> {
-            if (tab == editorTabs.current()) {
-                int[] pos = tab.caretLineColumn();
-                statusBar.setCaret(pos[0], pos[1]);
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                dispatchClose();
             }
         });
-        // Give the editor focus so the tab strip does not keep the focus ring.
-        javax.swing.SwingUtilities.invokeLater(tab.textPane()::requestFocusInWindow);
-        return tab;
+
+        createTab(ShellKind.CMD);
+        greet();
     }
 
     /** Writes the welcome banner into the console. */
     private void greet() {
         console.appendLine(AppInfo.title(), Theme.CONSOLE_SYSTEM);
-        console.appendInfo("Type commands in the editor above, then press Ctrl+Enter to run."
+        console.appendInfo("Write commands above, then press Ctrl+Enter or click Run."
                 + System.lineSeparator());
-        console.appendInfo("Only this window's folder is used; nothing outside the project is touched."
+        console.appendInfo("Each tab owns a persistent interpreter session, so cd and variables stick."
                 + System.lineSeparator());
         console.appendInfo(System.lineSeparator());
     }
 
-    // --- menu ---------------------------------------------------------------
+    // --- action plumbing ----------------------------------------------------
 
-    private JMenuBar createMenuBar() {
-        int menuMask = InputEvent.CTRL_DOWN_MASK;
-        JMenuBar bar = new JMenuBar();
+    /** Builds a named action with an optional keyboard shortcut. */
+    private Action action(String name, String tooltip, KeyStroke accelerator,
+                          Consumer<ActionEvent> body) {
+        Action action = new AbstractAction(name) {
+            private static final long serialVersionUID = 1L;
 
-        JMenu file = new JMenu("File");
-        file.setMnemonic('F');
-        file.add(item("New Tab", KeyStroke.getKeyStroke(KeyEvent.VK_T, menuMask), e -> newTab()));
-        file.add(item("Close Tab", KeyStroke.getKeyStroke(KeyEvent.VK_W, menuMask),
-                e -> closeTab(editorTabs.getSelectedIndex())));
-        file.addSeparator();
-        file.add(item("Exit", null, e -> dispose()));
-        bar.add(file);
-
-        JMenu edit = new JMenu("Edit");
-        edit.setMnemonic('E');
-        edit.add(item("Undo", KeyStroke.getKeyStroke(KeyEvent.VK_Z, menuMask),
-                e -> withEditor("Undo", tab -> tab.textPane().getActionMap()
-                        .get("cpgui.undo").actionPerformed(null))));
-        edit.add(item("Redo", KeyStroke.getKeyStroke(KeyEvent.VK_Y, menuMask),
-                e -> withEditor("Redo", tab -> tab.textPane().getActionMap()
-                        .get("cpgui.redo").actionPerformed(null))));
-        edit.addSeparator();
-        edit.add(item("Cut", KeyStroke.getKeyStroke(KeyEvent.VK_X, menuMask),
-                e -> withEditor("Cut", tab -> tab.textPane().cut())));
-        edit.add(item("Copy", KeyStroke.getKeyStroke(KeyEvent.VK_C, menuMask),
-                e -> withEditor("Copy", tab -> tab.textPane().copy())));
-        edit.add(item("Paste", KeyStroke.getKeyStroke(KeyEvent.VK_V, menuMask),
-                e -> withEditor("Paste", tab -> tab.textPane().paste())));
-        edit.addSeparator();
-        edit.add(item("Select All", KeyStroke.getKeyStroke(KeyEvent.VK_A, menuMask),
-                e -> withEditor("Select All", tab -> tab.textPane().selectAll())));
-        bar.add(edit);
-
-        JMenu view = new JMenu("View");
-        view.setMnemonic('V');
-        view.add(item("Clear Output", null, e -> console.clear()));
-        view.add(item("Focus Editor", KeyStroke.getKeyStroke(KeyEvent.VK_1, menuMask),
-                e -> withEditor("Focus editor", tab -> tab.textPane().requestFocusInWindow())));
-        view.addSeparator();
-        view.add(item("Larger Editor Font", KeyStroke.getKeyStroke(KeyEvent.VK_EQUALS, menuMask),
-                e -> zoomEditor(1)));
-        view.add(item("Smaller Editor Font", KeyStroke.getKeyStroke(KeyEvent.VK_MINUS, menuMask),
-                e -> zoomEditor(-1)));
-        bar.add(view);
-
-        JMenu help = new JMenu("Help");
-        help.setMnemonic('H');
-        help.add(item("About", null, e -> showAbout()));
-        bar.add(help);
-
-        return bar;
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                body.accept(e);
+            }
+        };
+        if (tooltip != null) {
+            action.putValue(Action.SHORT_DESCRIPTION, tooltip);
+        }
+        if (accelerator != null) {
+            action.putValue(Action.ACCELERATOR_KEY, accelerator);
+        }
+        return action;
     }
 
-    private JMenuItem item(String text, KeyStroke accelerator,
-                           java.awt.event.ActionListener listener) {
-        JMenuItem menuItem = new JMenuItem(text);
-        if (accelerator != null) {
-            menuItem.setAccelerator(accelerator);
+    private void trigger(EditorTab tab, String actionKey) {
+        Action action = tab.textPane().getActionMap().get(actionKey);
+        if (action != null) {
+            action.actionPerformed(new ActionEvent(tab.textPane(),
+                    ActionEvent.ACTION_PERFORMED, actionKey));
         }
-        menuItem.addActionListener(listener);
-        return menuItem;
+    }
+
+    private void withEditor(Consumer<EditorTab> body) {
+        EditorTab tab = editorTabs.current();
+        if (tab != null) {
+            body.accept(tab);
+        }
     }
 
     private void showAbout() {
@@ -171,13 +206,70 @@ public class MainFrame extends JFrame {
                 + "<br>A graphical front end for cmd.exe and powershell.exe."
                 + "<br><br>Java " + System.getProperty("java.version")
                 + " &middot; " + System.getProperty("os.name")
+                + "<br>Console code page: " + com.dogepopcat.cpgui.shell.ConsoleCharset.get().name()
                 + "<br>Licensed under the MIT license.</html>";
         panel.add(new JLabel(html), BorderLayout.CENTER);
         JOptionPane.showMessageDialog(this, panel, "About " + AppInfo.NAME,
                 JOptionPane.INFORMATION_MESSAGE);
     }
 
-    // --- actions ------------------------------------------------------------
+    // --- menu ---------------------------------------------------------------
+
+    private JMenuBar createMenuBar() {
+        JMenuBar bar = new JMenuBar();
+
+        JMenu file = new JMenu("File");
+        file.setMnemonic('F');
+        file.add(item(newTabAction));
+        file.add(item(closeTabAction));
+        file.addSeparator();
+        file.add(item(exitAction));
+        bar.add(file);
+
+        JMenu edit = new JMenu("Edit");
+        edit.setMnemonic('E');
+        edit.add(item(undoAction));
+        edit.add(item(redoAction));
+        edit.addSeparator();
+        edit.add(item(cutAction));
+        edit.add(item(copyAction));
+        edit.add(item(pasteAction));
+        edit.addSeparator();
+        edit.add(item(selectAllAction));
+        bar.add(edit);
+
+        JMenu run = new JMenu("Run");
+        run.setMnemonic('R');
+        run.add(item(runAction));
+        run.add(item(stopAction));
+        bar.add(run);
+
+        JMenu view = new JMenu("View");
+        view.setMnemonic('V');
+        view.add(item(clearOutputAction));
+        view.addSeparator();
+        view.add(item(largerFontAction));
+        view.add(item(smallerFontAction));
+        bar.add(view);
+
+        JMenu help = new JMenu("Help");
+        help.setMnemonic('H');
+        help.add(item(aboutAction));
+        bar.add(help);
+
+        return bar;
+    }
+
+    private JMenuItem item(Action action) {
+        JMenuItem menuItem = new JMenuItem(action);
+        Object accelerator = action.getValue(Action.ACCELERATOR_KEY);
+        if (accelerator instanceof KeyStroke keyStroke) {
+            menuItem.setAccelerator(keyStroke);
+        }
+        return menuItem;
+    }
+
+    // --- tabs ---------------------------------------------------------------
 
     /** Opens a new editor tab targeting the given interpreter. */
     public EditorTab newTab() {
@@ -186,71 +278,229 @@ public class MainFrame extends JFrame {
         return tab;
     }
 
-    /** Closes the tab at {@code index} without prompting (no files exist yet). */
+    private EditorTab createTab(ShellKind shellKind) {
+        EditorTab tab = editorTabs.newTab(shellKind);
+        tab.textPane().addCaretListener(e -> {
+            if (tab == editorTabs.current()) {
+                int[] pos = tab.caretLineColumn();
+                statusBar.setCaret(pos[0], pos[1]);
+            }
+        });
+        SwingUtilities.invokeLater(tab.textPane()::requestFocusInWindow);
+        return tab;
+    }
+
+    /** Closes the tab at {@code index}, releasing its interpreter session. */
     public void closeTab(int index) {
         if (index < 0 || index >= editorTabs.tabCount()) {
             return;
         }
-        editorTabs.closeTab(index);
+        EditorTab removed = editorTabs.closeTab(index);
+        if (removed != null) {
+            sessions.release(removed);
+        }
         if (editorTabs.tabCount() == 0) {
             createTab(ShellKind.CMD);
         }
         statusBar.setMessage("Tab closed");
     }
 
-    private interface EditorAction {
-        void run(EditorTab tab);
-    }
-
-    private void withEditor(String what, EditorAction action) {
+    private void activeTabChanged() {
         EditorTab tab = editorTabs.current();
         if (tab == null) {
             return;
         }
-        action.run(tab);
-        statusBar.setMessage(what);
+        statusBar.setShell(tab.shellKind());
+        toolBar.setInterpreter(tab.shellKind());
+        int[] pos = tab.caretLineColumn();
+        statusBar.setCaret(pos[0], pos[1]);
+        SwingUtilities.invokeLater(tab.textPane()::requestFocusInWindow);
+    }
+
+    /** Points the active tab at a different interpreter. */
+    public void setActiveShellKind(ShellKind kind) {
+        EditorTab tab = editorTabs.current();
+        if (tab == null || kind == null) {
+            return;
+        }
+        if (tab.shellKind() == kind) {
+            return;
+        }
+        tab.setShellKind(kind);
+        // The running interpreter cannot change, so start a fresh session.
+        sessions.release(tab);
+        statusBar.setShell(kind);
+        statusBar.setMessage("Active tab now targets " + kind.description());
     }
 
     private void zoomEditor(int delta) {
+        withEditor(tab -> {
+            java.awt.Font font = tab.textPane().getFont();
+            int size = Math.max(9, Math.min(28, font.getSize() + delta));
+            tab.textPane().setFont(font.deriveFont((float) size));
+            statusBar.setMessage("Editor font " + size + "pt");
+        });
+    }
+
+    // --- execution ----------------------------------------------------------
+
+    /** Sends the active tab's script to its interpreter. */
+    public void runActiveScript() {
         EditorTab tab = editorTabs.current();
         if (tab == null) {
             return;
         }
-        java.awt.Font font = tab.textPane().getFont();
-        int size = Math.max(9, Math.min(28, font.getSize() + delta));
-        tab.textPane().setFont(font.deriveFont((float) size));
-        statusBar.setMessage("Editor font " + size + "pt");
-    }
+        // Running the selection when there is one matches IDE behaviour.
+        String selected = tab.textPane().getSelectedText();
+        String script = selected != null && !selected.isBlank() ? selected : tab.getText();
+        if (script == null || script.isBlank()) {
+            statusBar.setMessage("Nothing to run");
+            return;
+        }
 
-    private void activeTabChanged() {
-        EditorTab tab = editorTabs.current();
-        if (tab != null) {
-            statusBar.setShell(tab.shellKind());
-            int[] pos = tab.caretLineColumn();
-            statusBar.setCaret(pos[0], pos[1]);
-            javax.swing.SwingUtilities.invokeLater(tab.textPane()::requestFocusInWindow);
+        ShellSession session;
+        try {
+            session = sessions.acquire(tab, tab.shellKind(), workspace,
+                    new ConsoleSessionListener(tab));
+        } catch (IOException e) {
+            console.appendError("Failed to start " + tab.shellKind().executable()
+                    + ": " + e.getMessage() + System.lineSeparator());
+            statusBar.setMessage("Could not start " + tab.shellKind().displayName());
+            return;
+        }
+
+        if (session.isBusy()) {
+            statusBar.setMessage("A command is already running in this tab");
+            return;
+        }
+
+        echoScript(tab, script);
+        try {
+            session.run(script);
+            statusBar.setMessage("Running in " + tab.shellKind().displayName()
+                    + " (pid " + session.pid() + ") \u2026");
+        } catch (IllegalStateException e) {
+            console.appendError(e.getMessage() + System.lineSeparator());
+            statusBar.setMessage("Could not run the script");
         }
     }
 
-    // --- helpers ------------------------------------------------------------
+    /** Stops the active tab's interpreter, discarding its state. */
+    public void stopActiveSession() {
+        EditorTab tab = editorTabs.current();
+        if (tab == null) {
+            return;
+        }
+        ShellSession session = sessions.peek(tab);
+        if (session == null) {
+            statusBar.setMessage("No running session in this tab");
+            return;
+        }
+        sessions.release(tab);
+        console.appendSystem("[session stopped]" + System.lineSeparator());
+        statusBar.setMessage("Session stopped");
+    }
+
+    /** Writes the script to the console prefixed like an interactive prompt. */
+    private void echoScript(EditorTab tab, String script) {
+        String prompt = tab.shellKind() == ShellKind.CMD ? "CMD>" : "PS>";
+        StringBuilder text = new StringBuilder();
+        for (String line : script.split("\\R", -1)) {
+            if (!line.isBlank()) {
+                text.append(prompt).append(' ').append(line.strip()).append(System.lineSeparator());
+            }
+        }
+        console.append(text.toString(), Theme.CONSOLE_COMMAND);
+    }
+
+    private void dispatchClose() {
+        sessions.closeAll();
+        dispose();
+        System.exit(0);
+    }
 
     /**
-     * @return {@code true} when the process is running with administrator
-     *         privileges, determined without shelling out
+     * Determines whether this process is elevated and updates the status bar.
+     *
+     * <p>The mandatory integrity level is read from {@code whoami /groups}; the
+     * high integrity SID is only present when the process runs as
+     * administrator. The query runs off the event dispatch thread.</p>
      */
-    private boolean isElevated() {
-        try {
-            Process p = new ProcessBuilder("cmd.exe", "/c", "net session >nul 2>&1")
-                    .redirectErrorStream(true).start();
-            p.getInputStream().readAllBytes();
-            return p.waitFor() == 0;
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return false;
-        } catch (Exception e) {
-            return false;
+    private void detectElevationAsync() {
+        Thread thread = new Thread(() -> {
+            boolean elevated = false;
+            Process process = null;
+            try {
+                process = new ProcessBuilder("whoami.exe", "/groups")
+                        .redirectErrorStream(true).start();
+                byte[] bytes;
+                try (java.io.InputStream in = process.getInputStream()) {
+                    bytes = in.readAllBytes();
+                }
+                process.waitFor();
+                String text = new String(bytes, java.nio.charset.StandardCharsets.ISO_8859_1);
+                elevated = text.contains("S-1-16-12288") || text.contains("S-1-16-16384");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } catch (Exception e) {
+                // Leave the flag false when the query is unavailable.
+            } finally {
+                if (process != null) {
+                    process.destroyForcibly();
+                }
+            }
+            boolean result = elevated;
+            SwingUtilities.invokeLater(() -> statusBar.setElevated(result));
+        }, "cpgui-elevation");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    // --- session events -----------------------------------------------------
+    /** Routes a session's output into the shared console. */
+    private final class ConsoleSessionListener implements ShellSession.Listener {
+
+        private final EditorTab tab;
+
+        ConsoleSessionListener(EditorTab tab) {
+            this.tab = tab;
+        }
+
+        @Override
+        public void onOutput(String text, boolean error) {
+            console.append(text, error ? Theme.CONSOLE_STDERR : Theme.CONSOLE_FOREGROUND);
+        }
+
+        @Override
+        public void onFinished(int exitCode, boolean success) {
+            String summary = success
+                    ? String.format("[%s finished, exit code %d]",
+                            tab.shellKind().displayName(), exitCode)
+                    : String.format("[%s reported a failure, exit code %d]",
+                            tab.shellKind().displayName(), exitCode);
+            console.append(summary + System.lineSeparator(),
+                    success ? Theme.CONSOLE_INFO : Theme.ERROR);
+            SwingUtilities.invokeLater(() -> {
+                statusBar.setMessage(success
+                        ? "Finished, exit code " + exitCode
+                        : "Finished with an error, exit code " + exitCode);
+                statusBar.setMessageColor(success ? null : Theme.ERROR);
+            });
+        }
+
+        @Override
+        public void onClosed(int exitCode) {
+            console.appendSystem("[" + tab.shellKind().displayName()
+                    + " session ended, exit code " + exitCode + "]" + System.lineSeparator());
+        }
+
+        @Override
+        public void onFailure(String message) {
+            console.appendError(message + System.lineSeparator());
         }
     }
+
+    // --- accessors ----------------------------------------------------------
 
     /** @return the console shared by every session. */
     public ConsolePane console() {
@@ -270,5 +520,27 @@ public class MainFrame extends JFrame {
     /** @return the split pane separating editor and console. */
     public JSplitPane splitPane() {
         return splitPane;
+    }
+
+    /** @return the registry owning every interpreter session. */
+    public SessionRegistry sessions() {
+        return sessions;
+    }
+
+    /** @return the directory new interpreter sessions start in. */
+    public File workspace() {
+        return workspace;
+    }
+
+    public Action newTabAction() {
+        return newTabAction;
+    }
+
+    public Action runAction() {
+        return runAction;
+    }
+
+    public Action stopAction() {
+        return stopAction;
     }
 }

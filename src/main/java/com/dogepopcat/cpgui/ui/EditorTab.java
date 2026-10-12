@@ -41,8 +41,8 @@ public class EditorTab extends JPanel {
     private final JTextPane textPane = new JTextPane();
     private final LineNumberView gutter;
     private final UndoManager undo = new UndoManager();
-    private final ShellKind shellKind;
 
+    private ShellKind shellKind;
     private File file;
     private String displayName = "Untitled";
     private boolean dirty;
@@ -264,6 +264,11 @@ public class EditorTab extends JPanel {
     /** @return the shell kind this tab targets. */
     public ShellKind shellKind() {
         return shellKind;
+    }
+
+    /** Switches the interpreter this tab's scripts are sent to. */
+    public void setShellKind(ShellKind shellKind) {
+        this.shellKind = shellKind == null ? ShellKind.CMD : shellKind;
     }
 
     /** @return the tab title, prefixed with {@code *} when unsaved. */
