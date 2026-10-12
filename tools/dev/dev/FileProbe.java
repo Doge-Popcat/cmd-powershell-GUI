@@ -177,8 +177,6 @@ public final class FileProbe {
         report(psHolder[0] != null && psHolder[0].shellKind() == ShellKind.POWERSHELL,
                 "ps1 opens as a PowerShell tab",
                 psHolder[0] == null ? "null" : psHolder[0].shellKind().displayName());
-
-        System.exit(0);
     }
 
     private static void report(boolean ok, String label, String extra) {
