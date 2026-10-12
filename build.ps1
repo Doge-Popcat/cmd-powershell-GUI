@@ -87,7 +87,9 @@ $argFile = Join-Path $buildDir 'javac.args'
 # javac reads an argument file literally, so it must not start with a BOM.
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 [System.IO.File]::WriteAllLines($argFile, [string[]]$sources, $utf8NoBom)
-& $javac -encoding UTF-8 -d $classesDir "@$argFile"
+# Force English diagnostics so compiler output is readable in any console codepage.
+# Force English diagnostics so compiler output is readable in any console codepage.
+& $javac "-J-Duser.language=en" "-J-Duser.country=US" -encoding UTF-8 -d $classesDir "@$argFile"
 if ($LASTEXITCODE -ne 0) { throw "Compilation failed with exit code $LASTEXITCODE." }
 
 # --- copy resources --------------------------------------------------------

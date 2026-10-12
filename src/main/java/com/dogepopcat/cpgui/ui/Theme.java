@@ -1,0 +1,60 @@
+package com.dogepopcat.cpgui.ui;
+
+import java.awt.Color;
+import java.awt.Font;
+
+/**
+ * Central place for the colours and fonts used by the dark editor surfaces.
+ *
+ * <p>The window chrome keeps the native platform look and feel while the
+ * editing and console surfaces use a dark scheme, which is what developers
+ * expect from an IDE.</p>
+ */
+public final class Theme {
+
+    // --- editor ------------------------------------------------------------
+    public static final Color EDITOR_BACKGROUND = new Color(0x1E, 0x1F, 0x22);
+    public static final Color EDITOR_FOREGROUND = new Color(0xD6, 0xD6, 0xD6);
+    public static final Color EDITOR_CARET = new Color(0xF0, 0xF0, 0xF0);
+    public static final Color EDITOR_SELECTION = new Color(0x2F, 0x54, 0x7A);
+    public static final Color CURRENT_LINE = new Color(0x28, 0x2A, 0x2E);
+
+    // --- gutter ------------------------------------------------------------
+    public static final Color GUTTER_BACKGROUND = new Color(0x24, 0x25, 0x29);
+    public static final Color GUTTER_FOREGROUND = new Color(0x6E, 0x73, 0x7A);
+    public static final Color GUTTER_CURRENT = new Color(0xC8, 0xCC, 0xD2);
+
+    // --- console -----------------------------------------------------------
+    public static final Color CONSOLE_BACKGROUND = new Color(0x14, 0x15, 0x18);
+    public static final Color CONSOLE_FOREGROUND = new Color(0xCF, 0xD2, 0xD6);
+    public static final Color CONSOLE_COMMAND = new Color(0x4E, 0xC9, 0xB0);
+    public static final Color CONSOLE_STDERR = new Color(0xF4, 0x74, 0x6B);
+    public static final Color CONSOLE_INFO = new Color(0x7A, 0x86, 0x96);
+    public static final Color CONSOLE_SYSTEM = new Color(0xE5, 0xC0, 0x7B);
+
+    // --- diagnostics -------------------------------------------------------
+    public static final Color WARNING = new Color(0xE5, 0xC0, 0x7B);
+    public static final Color ERROR = new Color(0xF4, 0x74, 0x6B);
+    public static final Color OK = new Color(0x8C, 0xCF, 0x7F);
+
+    private Theme() {
+    }
+
+    /** @return a monospaced font of the given size. */
+    public static Font mono(int size) {
+        return new Font(Font.MONOSPACED, Font.PLAIN, size);
+    }
+
+    /** @return a monospaced font of the given size and style. */
+    public static Font mono(int size, int style) {
+        return new Font(Font.MONOSPACED, style, size);
+    }
+
+    /** @return a slightly tinted version of {@code base}, used for hover states. */
+    public static Color tint(Color base, int amount) {
+        int r = Math.min(255, Math.max(0, base.getRed() + amount));
+        int g = Math.min(255, Math.max(0, base.getGreen() + amount));
+        int b = Math.min(255, Math.max(0, base.getBlue() + amount));
+        return new Color(r, g, b);
+    }
+}
