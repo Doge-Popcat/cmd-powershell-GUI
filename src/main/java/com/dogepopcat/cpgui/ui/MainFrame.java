@@ -1,6 +1,7 @@
 package com.dogepopcat.cpgui.ui;
 
 import com.dogepopcat.cpgui.AppInfo;
+import com.dogepopcat.cpgui.analysis.ScriptParser;
 import com.dogepopcat.cpgui.shell.SessionRegistry;
 import com.dogepopcat.cpgui.shell.ShellKind;
 import com.dogepopcat.cpgui.shell.ShellSession;
@@ -98,9 +99,21 @@ public class MainFrame extends JFrame {
             KeyStroke.getKeyStroke(KeyEvent.VK_MINUS, InputEvent.CTRL_DOWN_MASK),
             e -> zoomEditor(-1));
 
-    private final Action runAction = action("Run", "Run the script in the active tab (Ctrl+Enter)",
+    private final Action runAction = action("Run",
+            "Run the selection, or the whole script when nothing is selected (Ctrl+Enter)",
             KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, InputEvent.CTRL_DOWN_MASK),
             e -> runActiveScript());
+
+    private final Action runAllAction = action("Run All",
+            "Run every command in the active tab (Ctrl+Shift+Enter)",
+            KeyStroke.getKeyStroke(KeyEvent.VK_ENTER,
+                    InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK),
+            e -> runWholeScript());
+
+    private final Action runLineAction = action("Run Current Line",
+            "Run the command the caret is in (Ctrl+L)",
+            KeyStroke.getKeyStroke(KeyEvent.VK_L, InputEvent.CTRL_DOWN_MASK),
+            e -> runCurrentLine());
 
     private final Action stopAction = action("Stop", "Stop the active tab's interpreter",
             KeyStroke.getKeyStroke(KeyEvent.VK_F2, 0),
@@ -248,6 +261,9 @@ public class MainFrame extends JFrame {
         JMenu run = new JMenu("Run");
         run.setMnemonic('R');
         run.add(item(runAction));
+        run.add(item(runAllAction));
+        run.add(item(runLineAction));
+        run.addSeparator();
         run.add(item(stopAction));
         bar.add(run);
 
@@ -351,15 +367,71 @@ public class MainFrame extends JFrame {
 
     // --- execution ----------------------------------------------------------
 
-    /** Sends the active tab's script to its interpreter. */
+    /**
+     * Runs the active tab: the selection when there is one, otherwise the whole
+     * script. This is what the Run button and Ctrl+Enter do.
+     */
     public void runActiveScript() {
         EditorTab tab = editorTabs.current();
         if (tab == null) {
             return;
         }
-        // Running the selection when there is one matches IDE behaviour.
         String selected = tab.textPane().getSelectedText();
-        String script = selected != null && !selected.isBlank() ? selected : tab.getText();
+        if (selected != null && !selected.isBlank()) {
+            execute(tab, selected);
+        } else {
+            runWholeScript();
+        }
+    }
+
+    /** Runs every command in the active tab, ignoring any selection. */
+    public void runWholeScript() {
+        EditorTab tab = editorTabs.current();
+        if (tab == null) {
+            return;
+        }
+        execute(tab, tab.getText());
+    }
+
+    /**
+     * Runs the single command the caret sits in.
+     *
+     * <p>Line continuations are taken into account, so pressing the shortcut
+     * inside a multi-line block submits the whole block.</p>
+     */
+    public void runCurrentLine() {
+        EditorTab tab = editorTabs.current();
+        if (tab == null) {
+            return;
+        }
+        int caretLine = tab.caretLine();
+        for (ScriptParser.Command command : ScriptParser.parse(tab.shellKind(), tab.getText())) {
+            int first = command.lineIndex();
+            int last = first + countNewlines(command.text());
+            if (caretLine >= first && caretLine <= last) {
+                if (!command.executable()) {
+                    statusBar.setMessage("This line is a comment or blank");
+                    return;
+                }
+                execute(tab, command.text());
+                return;
+            }
+        }
+        statusBar.setMessage("Nothing to run on this line");
+    }
+
+    private static int countNewlines(String text) {
+        int count = 0;
+        for (int i = 0; i < text.length(); i++) {
+            if (text.charAt(i) == '\n') {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /** Sends a script to the active tab's interpreter. */
+    private void execute(EditorTab tab, String script) {
         if (script == null || script.isBlank()) {
             statusBar.setMessage("Nothing to run");
             return;
@@ -381,10 +453,13 @@ public class MainFrame extends JFrame {
             return;
         }
 
+        int commandCount = ScriptParser.executableCount(tab.shellKind(), script);
         echoScript(tab, script);
         try {
             session.run(script);
-            statusBar.setMessage("Running in " + tab.shellKind().displayName()
+            statusBar.setMessage("Running " + commandCount + " command"
+                    + (commandCount == 1 ? "" : "s")
+                    + " in " + tab.shellKind().displayName()
                     + " (pid " + session.pid() + ") \u2026");
         } catch (IllegalStateException e) {
             console.appendError(e.getMessage() + System.lineSeparator());
@@ -393,7 +468,8 @@ public class MainFrame extends JFrame {
     }
 
     /** Stops the active tab's interpreter, discarding its state. */
-    public void stopActiveSession() {        EditorTab tab = editorTabs.current();
+    public void stopActiveSession() {
+        EditorTab tab = editorTabs.current();
         if (tab == null) {
             return;
         }
