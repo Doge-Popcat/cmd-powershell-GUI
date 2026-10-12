@@ -71,6 +71,7 @@ public class MainFrame extends JFrame {
     private final LocationBar locationBar = new LocationBar();
     private final FileExplorer explorer = new FileExplorer();
     private JSplitPane horizontalSplit;
+    private HelpWindow helpWindow;
     private volatile boolean elevated;
     private boolean dividerPlaced;
     /** The font every editor tab uses; new tabs inherit it. */
@@ -179,6 +180,10 @@ public class MainFrame extends JFrame {
             KeyStroke.getKeyStroke(KeyEvent.VK_E, InputEvent.CTRL_DOWN_MASK
                     | InputEvent.SHIFT_DOWN_MASK),
             e -> toggleExplorer());
+
+    private final Action helpAction = action(Msg.ACTION_HELP, Msg.TIP_HELP,
+            KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0),
+            e -> showHelp());
 
     private final Action aboutAction = action(Msg.ACTION_ABOUT, Msg.TIP_ABOUT, null, e -> showAbout());
 
@@ -484,6 +489,30 @@ public class MainFrame extends JFrame {
     /** @return the file tree panel. */
     public FileExplorer explorer() {
         return explorer;
+    }
+
+    /**
+     * Opens the syntax reference, reusing the window when it is already up.
+     */
+    public void showHelp() {
+        EditorTab tab = editorTabs.current();
+        ShellKind kind = tab == null ? ShellKind.CMD : tab.shellKind();
+        if (helpWindow != null && helpWindow.isDisplayable()) {
+            helpWindow.setTitle(Msg.HELP_TITLE.text());
+            helpWindow.toFront();
+            return;
+        }
+        helpWindow = HelpWindow.open(this, kind, command -> {
+            EditorTab target = editorTabs.current();
+            if (target == null) {
+                return;
+            }
+            String request = target.shellKind() == ShellKind.CMD
+                    ? command + " /?"
+                    : "Get-Help " + command + " -Full";
+            selectBottomTab(BottomTab.OUTPUT);
+            execute(target, request);
+        });
     }
 
     /** Re-applies the palette to the window chrome after a theme change. */

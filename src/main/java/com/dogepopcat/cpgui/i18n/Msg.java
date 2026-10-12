@@ -35,6 +35,21 @@ public enum Msg {
     STATUS_EXPLORER_SHOWN("File explorer shown", "\u5df2\u663e\u793a\u6587\u4ef6\u7ba1\u7406\u5668"),
     STATUS_EXPLORER_HIDDEN("File explorer hidden", "\u5df2\u9690\u85cf\u6587\u4ef6\u7ba1\u7406\u5668"),
     TIP_EXPLORER("Show or hide the file tree", "\u663e\u793a\u6216\u9690\u85cf\u6587\u4ef6\u6811"),
+    HELP_TITLE("Syntax reference", "\u8bed\u6cd5\u53c2\u8003"),
+    HELP_COMMANDS("Commands", "\u547d\u4ee4"),
+    HELP_DOCS("Documentation", "\u5b98\u65b9\u6587\u6863"),
+    HELP_FILTER("Filter", "\u7b5b\u9009"),
+    HELP_PARAMETERS("Parameters", "\u53c2\u6570"),
+    HELP_SHOW_IN_CONSOLE("Show the interpreter's own help", "\u5728\u63a7\u5236\u53f0\u663e\u793a\u89e3\u91ca\u5668\u81ea\u5e26\u5e2e\u52a9"),
+    HELP_OPEN_DOCS("Open documentation", "\u6253\u5f00\u5b98\u65b9\u6587\u6863"),
+    HELP_DOCS_INTRO("Microsoft publishes the reference for both interpreters. Choose a language.",
+            "\u5fae\u8f6f\u5bf9\u4e24\u79cd\u89e3\u91ca\u5668\u90fd\u63d0\u4f9b\u5b98\u65b9\u53c2\u8003\u3002\u8bf7\u9009\u62e9\u8bed\u8a00\u3002"),
+    HELP_DOC_ENGLISH("English", "\u82f1\u6587"),
+    HELP_DOC_CHINESE("Chinese", "\u4e2d\u6587"),
+    HELP_NOTHING_SELECTED("Select a command to see its description.",
+            "\u9009\u62e9\u4e00\u6761\u547d\u4ee4\u4ee5\u67e5\u770b\u8bf4\u660e\u3002"),
+    HELP_USAGE_HINT("Press \"Show the interpreter's own help\" to see the full syntax in the console.",
+            "\u70b9\u51fb\u201c\u5728\u63a7\u5236\u53f0\u663e\u793a\u89e3\u91ca\u5668\u81ea\u5e26\u5e2e\u52a9\u201d\u53ef\u5728\u63a7\u5236\u53f0\u67e5\u770b\u5b8c\u6574\u8bed\u6cd5\u3002"),
     MENU_THEME("Theme", "\u4e3b\u9898"),
     THEME_DARK("Dark", "\u6df1\u8272"),
     THEME_LIGHT("Light", "\u6d45\u8272"),
@@ -68,6 +83,7 @@ public enum Msg {
     ACTION_LARGER_FONT("Larger Editor Font", "\u653e\u5927\u7f16\u8f91\u5668\u5b57\u4f53"),
     ACTION_SMALLER_FONT("Smaller Editor Font", "\u7f29\u5c0f\u7f16\u8f91\u5668\u5b57\u4f53"),
     ACTION_ABOUT("About", "\u5173\u4e8e"),
+    ACTION_HELP("Syntax reference", "\u8bed\u6cd5\u53c2\u8003"),
 
     // --- action tooltips ---------------------------------------------------
     TIP_NEW_TAB("Create a new script tab", "\u65b0\u5efa\u4e00\u4e2a\u811a\u672c\u6807\u7b7e\u9875"),
@@ -90,6 +106,8 @@ public enum Msg {
     TIP_LARGER_FONT("Make the editor text bigger", "\u653e\u5927\u7f16\u8f91\u5668\u6587\u5b57"),
     TIP_SMALLER_FONT("Make the editor text smaller", "\u7f29\u5c0f\u7f16\u8f91\u5668\u6587\u5b57"),
     TIP_ABOUT("About this application", "\u5173\u4e8e\u672c\u7a0b\u5e8f"),
+    TIP_HELP("Browse commands and open the official documentation",
+            "\u6d4f\u89c8\u547d\u4ee4\u5e76\u6253\u5f00\u5b98\u65b9\u6587\u6863"),
 
     // --- tool bar and location bar ----------------------------------------
     TOOLBAR_INTERPRETER("Interpreter:", "\u89e3\u91ca\u5668\uff1a"),

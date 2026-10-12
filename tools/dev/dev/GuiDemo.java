@@ -85,6 +85,7 @@ public final class GuiDemo {
         boolean typo = mode.equals("typo");
         boolean consoleMode = mode.equals("console");
         boolean fontsMode = mode.equals("fonts");
+        boolean helpMode = mode.equals("help");
         String script = powershell ? PS_SCRIPT
                 : typo ? TYPO_SCRIPT
                 : (danger || confirm) ? DANGER_SCRIPT : CMD_SCRIPT;
@@ -124,6 +125,11 @@ public final class GuiDemo {
                     frame.console().inputField().setText("echo console prompt works");
                     frame.console().inputField().postActionEvent();
                 });
+                timer.setRepeats(false);
+                timer.start();
+            }
+            if (helpMode) {
+                javax.swing.Timer timer = new javax.swing.Timer(900, e -> frame.showHelp());
                 timer.setRepeats(false);
                 timer.start();
             }
