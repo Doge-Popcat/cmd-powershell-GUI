@@ -1612,7 +1612,7 @@ public class MainFrame extends JFrame {
 
         @Override
         public void onOutput(String text, boolean error) {
-            console.append(text, error ? Theme.CONSOLE_STDERR : Theme.CONSOLE_FOREGROUND);
+            console.append(text, console.outputColor(error));
         }
 
         @Override

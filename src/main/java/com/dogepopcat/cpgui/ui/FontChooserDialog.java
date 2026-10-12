@@ -64,6 +64,9 @@ public final class FontChooserDialog extends JDialog {
     private static final String PREVIEW_TEXT =
             "dir /b /a  |  Get-ChildItem -Recurse  |  中文示例 0123456789";
 
+    /** Point size the application ships with. */
+    static final int DEFAULT_SIZE = 14;
+
     private final JComboBox<Target> target = new JComboBox<>(Target.values());
     private final JComboBox<String> family = new JComboBox<>();
     private final JComboBox<String> style = new JComboBox<>();
@@ -155,6 +158,17 @@ public final class FontChooserDialog extends JDialog {
         previewRow.setBorder(BorderFactory.createEmptyBorder(0, 12, 6, 12));
         previewRow.add(preview, BorderLayout.CENTER);
 
+        // A way back to the shipped default, so a font choice that turns out to
+        // be unreadable is easy to undo.
+        JButton defaults = new JButton(Msg.FONTS_DEFAULTS.text());
+        defaults.setFocusable(false);
+        defaults.addActionListener(e -> {
+            family.setSelectedItem(FontSupport.preferredFamily());
+            style.setSelectedIndex(0);
+            size.setValue(DEFAULT_SIZE);
+            updatePreview();
+        });
+
         JButton ok = new JButton(Msg.OK.text());
         JButton cancel = new JButton(Msg.CANCEL.text());
         ok.addActionListener(e -> {
@@ -164,6 +178,7 @@ public final class FontChooserDialog extends JDialog {
         cancel.addActionListener(e -> dispose());
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
+        buttons.add(defaults);
         buttons.add(ok);
         buttons.add(cancel);
 

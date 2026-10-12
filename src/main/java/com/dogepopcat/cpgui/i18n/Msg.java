@@ -61,6 +61,7 @@ public enum Msg {
     TIP_THEME("Choose the colour scheme", "\u9009\u62e9\u914d\u8272\u65b9\u6848"),
     THEME_CHANGED("Theme: %s", "\u4e3b\u9898\uff1a%s"),
     FONTS_NO_CJK("(no Chinese)", "\uff08\u65e0\u4e2d\u6587\uff09"),
+    FONTS_DEFAULTS("Restore defaults", "\u6062\u590d\u9ed8\u8ba4"),
 
     // --- actions -----------------------------------------------------------
     ACTION_NEW_TAB("New Tab", "\u65b0\u5efa\u6807\u7b7e\u9875"),
@@ -297,7 +298,6 @@ public enum Msg {
     FONTS_FAMILY("Font:", "\u5b57\u4f53\uff1a"),
     FONTS_STYLE("Style:", "\u5b57\u5f62\uff1a"),
     FONTS_SIZE("Size:", "\u5927\u5c0f\uff1a"),
-    FONTS_STYLE_PLAIN("Plain", "\u5e38\u89c4"),
     FONTS_STYLE_BOLD("Bold", "\u52a0\u7c97"),
     FONTS_STYLE_ITALIC("Italic", "\u659c\u4f53"),
     FONTS_STYLE_BOLD_ITALIC("Bold Italic", "\u52a0\u7c97\u659c\u4f53"),

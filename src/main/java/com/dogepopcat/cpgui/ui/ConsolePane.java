@@ -49,6 +49,9 @@ public class ConsolePane extends JPanel {
 
     private final JTextField input = new JTextField();
     private final JLabel prompt = new JLabel("CMD>");
+    private final JPanel row = new JPanel(new BorderLayout(6, 0));
+    /** Foreground set by a color command, or the theme colour by default. */
+    private Color currentForeground;
     private final List<String> history = new ArrayList<>();
 
     private java.util.function.Consumer<String> inputHandler = command -> { };
@@ -88,7 +91,7 @@ public class ConsolePane extends JPanel {
      * and the Run button every time, which is how a console is normally used.</p>
      */
     private JPanel createInputRow() {
-        JPanel row = new JPanel(new BorderLayout(6, 0));
+
         row.setBackground(Theme.CONSOLE_BACKGROUND);
         row.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.tint(Theme.GUTTER_BACKGROUND, 40)),
@@ -243,8 +246,26 @@ public class ConsolePane extends JPanel {
             input.setForeground(foreground);
             input.setCaretColor(foreground);
             prompt.setForeground(foreground);
+            row.setBackground(background);
+            this.currentForeground = foreground;
             repaint();
         });
+    }
+
+    /**
+     * @param error whether the text is an error
+     * @return the colour normal output should be drawn in, which follows a
+     *         {@code color} command so the whole console changes and not just
+     *         the prompt
+     */
+    public Color outputColor(boolean error) {
+        return error ? Theme.CONSOLE_STDERR
+                : currentForeground == null ? Theme.CONSOLE_FOREGROUND : currentForeground;
+    }
+
+    /** @return the colour an echoed command is drawn in. */
+    public Color commandColor() {
+        return Theme.CONSOLE_COMMAND;
     }
 
     /** @return the colour console output is currently drawn in. */

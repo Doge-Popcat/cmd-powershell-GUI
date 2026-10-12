@@ -255,7 +255,10 @@ public final class CompletionProvider {
             return true;
         }
         if (kind == ShellKind.CMD) {
-            return c == '%' || c == '!';
+            // The colon has to count as part of a word, otherwise "cd C:\" is
+            // scanned as the word "\" and the drive letter is lost, which made
+            // the listing come from the working directory instead of C:\.
+            return c == '%' || c == '!' || c == ':';
         }
         return c == '$' || c == ':';
     }
