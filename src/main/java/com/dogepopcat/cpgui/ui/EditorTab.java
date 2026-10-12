@@ -41,6 +41,7 @@ public class EditorTab extends JPanel {
     private final JTextPane textPane = new JTextPane();
     private final LineNumberView gutter;
     private final UndoManager undo = new UndoManager();
+    private final SyntaxHighlighter highlighter;
 
     private ShellKind shellKind;
     private File file;
@@ -89,9 +90,11 @@ public class EditorTab extends JPanel {
 
             @Override
             public void changedUpdate(DocumentEvent e) {
-                markDirty();
+                // Attribute-only changes (syntax colours) are not text edits.
             }
         });
+
+        highlighter = new SyntaxHighlighter(this);
     }
 
     private void installUndoRedo() {
@@ -269,6 +272,13 @@ public class EditorTab extends JPanel {
     /** Switches the interpreter this tab's scripts are sent to. */
     public void setShellKind(ShellKind shellKind) {
         this.shellKind = shellKind == null ? ShellKind.CMD : shellKind;
+        // The syntax rules changed, so re-colour with the new interpreter's.
+        highlighter.refresh();
+    }
+
+    /** @return the highlighter colouring this tab. */
+    public SyntaxHighlighter highlighter() {
+        return highlighter;
     }
 
     /** @return the tab title, prefixed with {@code *} when unsaved. */

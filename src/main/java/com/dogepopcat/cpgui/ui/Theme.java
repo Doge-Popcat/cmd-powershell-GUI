@@ -32,6 +32,18 @@ public final class Theme {
     public static final Color CONSOLE_INFO = new Color(0x7A, 0x86, 0x96);
     public static final Color CONSOLE_SYSTEM = new Color(0xE5, 0xC0, 0x7B);
 
+    // --- syntax highlighting ----------------------------------------------
+    public static final Color SYNTAX_COMMAND = new Color(0x5C, 0xAD, 0xE8);
+    public static final Color SYNTAX_KEYWORD = new Color(0xC5, 0x86, 0xC0);
+    public static final Color SYNTAX_PARAMETER = new Color(0x9C, 0xDC, 0xFE);
+    public static final Color SYNTAX_SWITCH = new Color(0x9C, 0xDC, 0xFE);
+    public static final Color SYNTAX_VARIABLE = new Color(0xC8, 0xA6, 0xFF);
+    public static final Color SYNTAX_STRING = new Color(0xCE, 0x91, 0x78);
+    public static final Color SYNTAX_NUMBER = new Color(0xB5, 0xCE, 0xA8);
+    public static final Color SYNTAX_OPERATOR = new Color(0xD4, 0xD4, 0xD4);
+    public static final Color SYNTAX_COMMENT = new Color(0x6A, 0x99, 0x55);
+    public static final Color SYNTAX_LABEL = new Color(0xDC, 0xDC, 0xAA);
+
     // --- diagnostics -------------------------------------------------------
     public static final Color WARNING = new Color(0xE5, 0xC0, 0x7B);
     public static final Color ERROR = new Color(0xF4, 0x74, 0x6B);
