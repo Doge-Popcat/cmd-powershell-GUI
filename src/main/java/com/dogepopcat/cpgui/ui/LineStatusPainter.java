@@ -1,0 +1,64 @@
+package com.dogepopcat.cpgui.ui;
+
+import javax.swing.text.BadLocationException;
+import javax.swing.text.JTextComponent;
+import javax.swing.text.LayeredHighlighter;
+import javax.swing.text.Position;
+import javax.swing.text.View;
+import java.awt.Color;
+import java.awt.Graphics;
+import java.awt.Rectangle;
+import java.awt.Shape;
+
+/**
+ * Fills a range with a translucent wash, used to mark the lines that single line
+ * mode has already run.
+ *
+ * <p>It is a layered painter so the wash follows each text view and therefore
+ * covers exactly the line, including when the editor is scrolled.</p>
+ */
+public final class LineStatusPainter extends LayeredHighlighter.LayerPainter {
+
+    private final Color colour;
+
+    public LineStatusPainter(Color colour) {
+        this.colour = colour;
+    }
+
+    @Override
+    public void paint(Graphics g, int p0, int p1, Shape bounds, JTextComponent component) {
+        Rectangle area = bounds.getBounds();
+        fill(g, area);
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    public Shape paintLayer(Graphics g, int p0, int p1, Shape viewBounds,
+                            JTextComponent component, View view) {
+        Rectangle area;
+        try {
+            Shape shape = view.modelToView(p0, Position.Bias.Forward,
+                    p1, Position.Bias.Backward, viewBounds);
+            area = shape instanceof Rectangle rectangle ? rectangle : shape.getBounds();
+        } catch (BadLocationException | IllegalArgumentException e) {
+            return null;
+        }
+        fill(g, area);
+        return area;
+    }
+
+    private void fill(Graphics g, Rectangle area) {
+        if (area.width <= 0 || area.height <= 0) {
+            return;
+        }
+        Color previous = g.getColor();
+        g.setColor(colour);
+        g.fillRect(area.x, area.y, area.width, area.height);
+        g.setColor(previous);
+    }
+
+    /** @return the colour this painter washes with. */
+    public Color colour() {
+        return colour;
+    }
+}

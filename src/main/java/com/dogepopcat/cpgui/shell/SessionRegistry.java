@@ -30,6 +30,8 @@ public final class SessionRegistry implements AutoCloseable {
                                              ShellSession.Listener listener) throws IOException {
         ShellSession existing = sessions.get(key);
         if (existing != null && existing.isAlive() && existing.kind() == kind) {
+            // The session is reused, so point it at this run's receiver.
+            existing.setListener(listener);
             return existing;
         }
         if (existing != null) {

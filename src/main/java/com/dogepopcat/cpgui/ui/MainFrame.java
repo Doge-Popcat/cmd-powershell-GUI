@@ -157,6 +157,8 @@ public class MainFrame extends JFrame {
             KeyStroke.getKeyStroke(KeyEvent.VK_L, InputEvent.CTRL_DOWN_MASK),
             e -> runCurrentLine());
 
+    private final Action singleLineAction = buildSingleLineAction();
+
     private final Action stopAction = action(Msg.ACTION_STOP, Msg.TIP_STOP,
             KeyStroke.getKeyStroke(KeyEvent.VK_F2, 0),
             e -> stopActiveSession());
@@ -378,6 +380,7 @@ public class MainFrame extends JFrame {
         run.add(item(runAction));
         run.add(item(runAllAction));
         run.add(item(runLineAction));
+        run.add(item(singleLineAction));
         run.addSeparator();
         run.add(item(stopAction));
         bar.add(run);
@@ -696,13 +699,9 @@ public class MainFrame extends JFrame {
      * without the user noticing, so the choice is theirs.</p>
      */
     private boolean confirmLossySave(File target, ScriptFile.UnrepresentableCharactersException e) {
-        String message = "These characters cannot be written in " + e.charset().name()
-                + ", which is the code page cmd.exe reads batch files with:\n\n    "
-                + e.characters()
-                + "\n\nSaving will replace them with '?'. "
-                + "Save the script as PowerShell (.ps1) to keep them.\n\nSave anyway?";
-        int choice = JOptionPane.showConfirmDialog(this, message,
-                "Some characters cannot be saved", JOptionPane.YES_NO_OPTION,
+        int choice = JOptionPane.showConfirmDialog(this,
+                Msg.DIALOG_LOSSY_MESSAGE.format(e.charset().name(), e.characters()),
+                Msg.DIALOG_LOSSY_TITLE.text(), JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE);
         return choice == JOptionPane.YES_OPTION;
     }
@@ -864,6 +863,10 @@ public class MainFrame extends JFrame {
         if (tab == null) {
             return;
         }
+        if (tab.isSingleLineMode()) {
+            runSingleLine();
+            return;
+        }
         String selected = tab.textPane().getSelectedText();
         if (selected != null && !selected.isBlank()) {
             execute(tab, selected);
@@ -967,6 +970,19 @@ public class MainFrame extends JFrame {
 
     /** Sends a script to the active tab's interpreter. */
     private void execute(EditorTab tab, String script) {
+        execute(tab, script, null);
+    }
+
+    /**
+     * Sends a script to the interpreter and reports the outcome.
+     *
+     * @param tab      the tab to run in
+     * @param script   the script to submit
+     * @param onResult called with the exit code and whether it succeeded, or
+     *                 {@code null} when the caller does not care
+     */
+    private void execute(EditorTab tab, String script,
+                         java.util.function.BiConsumer<Integer, Boolean> onResult) {
         if (script == null || script.isBlank()) {
             statusBar.setMessage(Msg.STATUS_NOTHING_TO_RUN.text());
             return;
@@ -987,7 +1003,7 @@ public class MainFrame extends JFrame {
         ShellSession session;
         try {
             session = sessions.acquire(tab, tab.shellKind(), workspace,
-                    new ConsoleSessionListener(tab));
+                    new ConsoleSessionListener(tab, onResult));
         } catch (IOException e) {
             console.appendError(tab.shellKind().executable() + ": "
                     + e.getMessage() + System.lineSeparator());
@@ -995,10 +1011,8 @@ public class MainFrame extends JFrame {
             return;
         }
 
-        if (session.isBusy()) {
-            statusBar.setMessage(Msg.STATUS_BUSY.text());
-            return;
-        }
+        // The session queues the script, so a run that arrives while the previous
+        // one, or the internal directory query, is still in flight is not lost.
 
         int commandCount = ScriptParser.executableCount(tab.shellKind(), script);
         echoScript(tab, script);
@@ -1072,6 +1086,78 @@ public class MainFrame extends JFrame {
         return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
+    /**
+     * Builds the single-line mode toggle.
+     *
+     * <p>It is a toggle button so the current state is visible in the tool bar
+     * rather than only in a menu tick.</p>
+     */
+    private Action buildSingleLineAction() {
+        Action action = new javax.swing.AbstractAction(Msg.ACTION_SINGLE_LINE.text(),
+                javax.swing.Action.SMALL_ICON == null ? null : null) {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                setSingleLineMode(!isSingleLineMode());
+            }
+        };
+        action.putValue(Action.SHORT_DESCRIPTION, Msg.TIP_SINGLE_LINE.text());
+        localizedActions.add(new Object[]{action, Msg.ACTION_SINGLE_LINE, Msg.TIP_SINGLE_LINE});
+        return action;
+    }
+
+    /** @return {@code true} when the active tab runs one line at a time. */
+    public boolean isSingleLineMode() {
+        EditorTab tab = editorTabs.current();
+        return tab != null && tab.isSingleLineMode();
+    }
+
+    /**
+     * Turns single line mode on or off for the active tab.
+     *
+     * @param enabled the new state
+     */
+    public void setSingleLineMode(boolean enabled) {
+        EditorTab tab = editorTabs.current();
+        if (tab == null) {
+            return;
+        }
+        tab.setSingleLineMode(enabled);
+        statusBar.setMessage(enabled
+                ? Msg.STATUS_SINGLE_LINE_ON.text()
+                : Msg.STATUS_SINGLE_LINE_OFF.text());
+    }
+
+    /**
+     * Runs the caret's line, marks the result and moves to the next line.
+     *
+     * <p>This is what the Run button does while single line mode is on: the text
+     * is still edited normally, but execution walks down the script one command
+     * at a time and each line is washed green or red.</p>
+     */
+    public void runSingleLine() {
+        EditorTab tab = editorTabs.current();
+        if (tab == null) {
+            return;
+        }
+        int line = tab.caretLine();
+        String text = tab.lineText(line);
+        String command = text.strip();
+        boolean comment = ScriptParser.isCommentLine(tab.shellKind(), text);
+        if (command.isEmpty() || comment) {
+            tab.moveCaretToLine(line + 1);
+            statusBar.setMessage(comment
+                    ? Msg.STATUS_COMMENT_LINE.text() : Msg.STATUS_NOTHING_TO_RUN.text());
+            return;
+        }
+        int runLine = line;
+        execute(tab, command, (exitCode, success) -> {
+            tab.markLineResult(runLine, success);
+            tab.moveCaretToLine(runLine + 1);
+        });
+    }
+
     /** Stops the active tab's interpreter, discarding its state. */
     public void stopActiveSession() {
         EditorTab tab = editorTabs.current();        if (tab == null) {
@@ -1123,10 +1209,9 @@ public class MainFrame extends JFrame {
             // Running commands next to the operating system is how accidents
             // happen, so a system folder is refused rather than accepted quietly.
             int choice = JOptionPane.showConfirmDialog(this,
-                    directory.getAbsolutePath() + "\n\n"
-                            + "This is a Windows system folder. Commands run here could damage "
-                            + "the operating system.\n\nUse it anyway?",
-                    "System folder", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+                    Msg.DIALOG_SYSTEM_FOLDER_MESSAGE.format(directory.getAbsolutePath()),
+                    Msg.DIALOG_SYSTEM_FOLDER_TITLE.text(),
+                    JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
             if (choice != JOptionPane.YES_OPTION) {
                 locationBar.showRejected("refused");
                 statusBar.setMessage(Msg.STATUS_WORKSPACE_UNCHANGED.text());
@@ -1385,9 +1470,12 @@ public class MainFrame extends JFrame {
     private final class ConsoleSessionListener implements ShellSession.Listener {
 
         private final EditorTab tab;
+        private final java.util.function.BiConsumer<Integer, Boolean> onResult;
 
-        ConsoleSessionListener(EditorTab tab) {
+        ConsoleSessionListener(EditorTab tab,
+                               java.util.function.BiConsumer<Integer, Boolean> onResult) {
             this.tab = tab;
+            this.onResult = onResult;
         }
 
         @Override
@@ -1406,11 +1494,11 @@ public class MainFrame extends JFrame {
                 statusBar.setMessage(success
                         ? Msg.STATUS_FINISHED.format(exitCode)
                         : Msg.STATUS_FINISHED_ERROR.format(exitCode));
-                statusBar.setMessage(success
-                        ? "Finished, exit code " + exitCode
-                        : "Finished with an error, exit code " + exitCode);
                 statusBar.setMessageColor(success ? null : Theme.ERROR);
                 refreshLiveDirectory(tab);
+                if (onResult != null) {
+                    onResult.accept(exitCode, success);
+                }
             });
         }
 
@@ -1507,6 +1595,11 @@ public class MainFrame extends JFrame {
 
     public Action workspaceAction() {
         return workspaceAction;
+    }
+
+    /** @return the single-line mode toggle. */
+    public Action singleLineAction() {
+        return singleLineAction;
     }
 
     public Action adminAction() {

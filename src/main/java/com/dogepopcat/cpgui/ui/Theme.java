@@ -56,6 +56,10 @@ public final class Theme {
     public static Color CURRENT_LINE;
     /** Greyed inline suggestion drawn after the caret. */
     public static Color GHOST_TEXT;
+    /** Wash behind a line that single line mode ran successfully. */
+    public static Color LINE_SUCCESS;
+    /** Wash behind a line whose command failed. */
+    public static Color LINE_FAILURE;
 
     // --- gutter ------------------------------------------------------------
     public static Color GUTTER_BACKGROUND;
@@ -192,6 +196,8 @@ public final class Theme {
         EDITOR_SELECTION = new Color(0x2F, 0x54, 0x7A);
         CURRENT_LINE = new Color(0x28, 0x2A, 0x2E);
         GHOST_TEXT = new Color(0x60, 0x66, 0x70);
+        LINE_SUCCESS = new Color(0x1E, 0x3A, 0x24);
+        LINE_FAILURE = new Color(0x3E, 0x1E, 0x20);
 
         GUTTER_BACKGROUND = new Color(0x24, 0x25, 0x29);
         GUTTER_FOREGROUND = new Color(0x6E, 0x73, 0x7A);
@@ -227,6 +233,8 @@ public final class Theme {
         EDITOR_SELECTION = new Color(0xB6, 0xD6, 0xF5);
         CURRENT_LINE = new Color(0xF2, 0xF4, 0xF7);
         GHOST_TEXT = new Color(0xA8, 0xAE, 0xB6);
+        LINE_SUCCESS = new Color(0xDC, 0xF2, 0xDE);
+        LINE_FAILURE = new Color(0xFA, 0xE0, 0xE0);
 
         GUTTER_BACKGROUND = new Color(0xEC, 0xEE, 0xF1);
         GUTTER_FOREGROUND = new Color(0x8A, 0x90, 0x98);

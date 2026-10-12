@@ -45,10 +45,14 @@ public final class ShellSession implements AutoCloseable {
     private final Charset charset;
     private final Process process;
     private final BufferedWriter stdin;
-    private final Listener listener;
+    /** The active receiver. Replaced whenever a session is reused for a run. */
+    private volatile Listener listener;
     private final String sessionId;
     private final String promptToken;
     private final Object lock = new Object();
+
+    /** Scripts waiting for the interpreter, in submission order. */
+    private final java.util.ArrayDeque<Job> queue = new java.util.ArrayDeque<>();
 
     private CompletableFuture<Integer> pending;
     private CompletableFuture<String> pendingCapture;
@@ -123,6 +127,7 @@ public final class ShellSession implements AutoCloseable {
         }
         closed = true;
         synchronized (lock) {
+            queue.clear();
             if (pending != null) {
                 pending.complete(exitCode);
                 pending = null;
@@ -253,6 +258,11 @@ public final class ShellSession implements AutoCloseable {
         if (capture == null) {
             listener.onFinished(code, success);
         }
+        synchronized (lock) {
+            if (!closed) {
+                startNextLocked();
+            }
+        }
     }
 
     private static int parseInt(String value) {
@@ -274,7 +284,9 @@ public final class ShellSession implements AutoCloseable {
      * @throws IllegalStateException if the session is closed or already busy
      */
     public CompletableFuture<Integer> run(String script) {
-        return submit(script, null);
+        CompletableFuture<Integer> future = new CompletableFuture<>();
+        enqueue(new Job(script, future, null));
+        return future;
     }
 
     /**
@@ -286,43 +298,54 @@ public final class ShellSession implements AutoCloseable {
      *
      * @param script the script to run
      * @return a future carrying the captured output
-     * @throws IllegalStateException if the session is closed or already busy
      */
     public CompletableFuture<String> query(String script) {
         CompletableFuture<String> capture = new CompletableFuture<>();
-        submit(script, capture);
+        enqueue(new Job(script, new CompletableFuture<>(), capture));
         return capture;
     }
 
+    /** One script waiting to be written to the interpreter. */
+    private record Job(String script, CompletableFuture<Integer> future,
+                       CompletableFuture<String> capture) {
+    }
+
     /**
-     * Sends a script to the interpreter.
+     * Adds a script to the queue and starts it when the interpreter is free.
      *
-     * @param script  one or more commands, separated by newlines
-     * @param capture when not {@code null}, output is collected for it rather
-     *                than handed to the listener
-     * @return a future carrying the exit code
-     * @throws IllegalStateException if the session is closed or already busy
+     * <p>Requests are queued rather than rejected. Reading the working directory
+     * back after a run occupies the interpreter for a few milliseconds, and
+     * refusing a run that lands in that window would silently do nothing, which
+     * is exactly what happened before.</p>
      */
-    private CompletableFuture<Integer> submit(String script, CompletableFuture<String> capture) {
-        CompletableFuture<Integer> future = new CompletableFuture<>();
-        String marker;
+    private void enqueue(Job job) {
         synchronized (lock) {
             if (closed) {
                 throw new IllegalStateException("The " + kind.displayName() + " session has ended.");
             }
-            if (pending != null) {
-                throw new IllegalStateException("A command is still running in this tab.");
+            queue.addLast(job);
+            if (pending == null) {
+                startNextLocked();
             }
-            marker = "#M#" + sessionId + "#" + (++sequence) + "#";
-            pendingMarker = marker;
-            pending = future;
-            if (capture != null) {
-                pendingCapture = capture;
-                captureBuffer = new StringBuilder();
-            }
+        }
+    }
+
+    /** Writes the next queued script. The caller must hold {@link #lock}. */
+    private void startNextLocked() {
+        Job job = queue.pollFirst();
+        if (job == null) {
+            return;
+        }
+        String marker = "#M#" + sessionId + "#" + (++sequence) + "#";
+        pendingMarker = marker;
+        pending = job.future();
+        if (job.capture() != null) {
+            pendingCapture = job.capture();
+            captureBuffer = new StringBuilder();
         }
         try {
             StringBuilder payload = new StringBuilder();
+            String script = job.script();
             if (script != null && !script.isEmpty()) {
                 payload.append(script);
                 if (script.charAt(script.length() - 1) != '\n') {
@@ -330,24 +353,20 @@ public final class ShellSession implements AutoCloseable {
                 }
             }
             payload.append(markerCommand(marker)).append('\n');
-            synchronized (lock) {
-                stdin.write(payload.toString());
-                stdin.flush();
-            }
+            stdin.write(payload.toString());
+            stdin.flush();
         } catch (IOException e) {
-            synchronized (lock) {
-                pending = null;
-                pendingMarker = null;
-                pendingCapture = null;
-                captureBuffer = null;
-            }
+            pending = null;
+            pendingMarker = null;
+            CompletableFuture<String> capture = pendingCapture;
+            pendingCapture = null;
+            captureBuffer = null;
             if (capture != null) {
                 capture.completeExceptionally(e);
             }
+            job.future().completeExceptionally(e);
             listener.onFailure("Could not write to the interpreter: " + e.getMessage());
-            future.completeExceptionally(e);
         }
-        return future;
     }
 
     private String markerCommand(String marker) {
@@ -356,6 +375,22 @@ public final class ShellSession implements AutoCloseable {
         }
         // "$?" covers cmdlet failures, $LASTEXITCODE covers native programs.
         return "Write-Output ('" + marker + "' + $? + '|' + [int]$LASTEXITCODE)";
+    }
+
+    /**
+     * Replaces the receiver.
+     *
+     * <p>A session is reused across runs, and each run may want to report its
+     * outcome somewhere different, so the listener has to be swappable. Without
+     * this, every run after the first would still report to the first run's
+     * listener.</p>
+     *
+     * @param listener the new receiver
+     */
+    public void setListener(Listener listener) {
+        if (listener != null) {
+            this.listener = listener;
+        }
     }
 
     /** @return the interpreter this session drives. */
@@ -371,7 +406,7 @@ public final class ShellSession implements AutoCloseable {
     /** @return {@code true} while a script has been submitted but not finished. */
     public boolean isBusy() {
         synchronized (lock) {
-            return pending != null;
+            return pending != null || !queue.isEmpty();
         }
     }
 

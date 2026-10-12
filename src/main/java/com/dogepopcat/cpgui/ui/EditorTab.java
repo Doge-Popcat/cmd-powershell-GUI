@@ -50,6 +50,11 @@ public class EditorTab extends JPanel {
     private final CompletionController completion;
 
     private ShellKind shellKind;
+    /** Line results shown while single line mode is on: line index to success. */
+    private final java.util.Map<Integer, Boolean> lineResults = new java.util.LinkedHashMap<>();
+    private final java.util.List<Object> lineHighlights = new java.util.ArrayList<>();
+    private boolean singleLineMode;
+
     private File file;
     private String displayName;
     private boolean dirty;
@@ -328,6 +333,98 @@ public class EditorTab extends JPanel {
         textPane.setFont(font);
         gutter.setGutterFont(font);
         highlighter.refresh();
+    }
+
+    /** @return {@code true} while single line mode is active. */
+    public boolean isSingleLineMode() {
+        return singleLineMode;
+    }
+
+    /**
+     * Turns single line mode on or off, clearing the line marks when it goes off.
+     *
+     * @param singleLineMode the new state
+     */
+    public void setSingleLineMode(boolean singleLineMode) {
+        this.singleLineMode = singleLineMode;
+        if (!singleLineMode) {
+            clearLineResults();
+        }
+    }
+
+    /** @return how many lines the document has. */
+    public int lineCount() {
+        return textPane.getDocument().getDefaultRootElement().getElementCount();
+    }
+
+    /**
+     * Moves the caret to the start of a line and scrolls it into view.
+     *
+     * @param line the zero based line index
+     */
+    public void moveCaretToLine(int line) {
+        Element root = textPane.getDocument().getDefaultRootElement();
+        int clamped = Math.max(0, Math.min(line, root.getElementCount() - 1));
+        int offset = root.getElement(clamped).getStartOffset();
+        textPane.setCaretPosition(offset);
+        try {
+            java.awt.Rectangle view = textPane.modelToView(offset);
+            if (view != null) {
+                textPane.scrollRectToVisible(view);
+            }
+        } catch (javax.swing.text.BadLocationException ignored) {
+            // Scrolling is a convenience; the caret has still moved.
+        }
+    }
+
+    /**
+     * Records how a line turned out and washes it green or red.
+     *
+     * @param line    the zero based line index
+     * @param success whether the command succeeded
+     */
+    public void markLineResult(int line, boolean success) {
+        if (!singleLineMode) {
+            return;
+        }
+        lineResults.put(line, success);
+        applyLineResults();
+    }
+
+    /** Removes every line mark. */
+    public void clearLineResults() {
+        lineResults.clear();
+        applyLineResults();
+    }
+
+    /** @return the recorded result of a line, or {@code null} when it has none. */
+    public Boolean lineResult(int line) {
+        return lineResults.get(line);
+    }
+
+    private void applyLineResults() {
+        javax.swing.text.Highlighter highlighter = textPane.getHighlighter();
+        for (Object highlight : lineHighlights) {
+            highlighter.removeHighlight(highlight);
+        }
+        lineHighlights.clear();
+
+        Element root = textPane.getDocument().getDefaultRootElement();
+        lineResults.forEach((line, success) -> {
+            if (line < 0 || line >= root.getElementCount()) {
+                return;
+            }
+            Element element = root.getElement(line);
+            int start = element.getStartOffset();
+            int end = Math.max(start, element.getEndOffset() - 1);
+            try {
+                lineHighlights.add(highlighter.addHighlight(start, end,
+                        new LineStatusPainter(success
+                                ? Theme.LINE_SUCCESS : Theme.LINE_FAILURE)));
+            } catch (javax.swing.text.BadLocationException ignored) {
+                // The document changed under us; the next run will catch up.
+            }
+        });
     }
 
     /** @return the font the editor is currently using. */

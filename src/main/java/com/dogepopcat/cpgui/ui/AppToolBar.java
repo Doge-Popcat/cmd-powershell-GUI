@@ -9,6 +9,7 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JToggleButton;
 import javax.swing.JLabel;
 import javax.swing.JToolBar;
 import javax.swing.SwingConstants;
@@ -43,6 +44,7 @@ public class AppToolBar extends JToolBar {
     private final JLabel interpreterLabel = new JLabel();
     private final int buttonWidth;
     private JButton adminButton;
+    private JToggleButton singleLineToggle;
     private boolean syncing;
     private boolean elevated;
 
@@ -61,6 +63,7 @@ public class AppToolBar extends JToolBar {
         add(button(frame.saveAction()));
         add(strut());
         add(button(frame.runAction()));
+        add(singleLineToggle(frame));
         add(button(frame.stopAction()));
         add(strut());
         add(button(frame.workspaceAction()));
@@ -99,6 +102,11 @@ public class AppToolBar extends JToolBar {
             }
         }
         setElevated(elevated);
+        if (singleLineToggle != null) {
+            singleLineToggle.setBackground(Theme.BUTTON_BACKGROUND);
+            singleLineToggle.setForeground(Theme.WINDOW_FOREGROUND);
+            singleLineToggle.setBorder(Theme.raisedBorder());
+        }
         repaint();
     }
 
@@ -140,6 +148,25 @@ public class AppToolBar extends JToolBar {
         }
         return Math.max(MIN_BUTTON_WIDTH,
                 Math.min(MAX_BUTTON_WIDTH, widest + 26));
+    }
+
+    /**
+     * Builds the single-line mode toggle. It is a toggle button so the current
+     * state is visible in the bar rather than buried in a menu tick.
+     */
+    private JToggleButton singleLineToggle(MainFrame frame) {
+        JToggleButton toggle = new JToggleButton(frame.singleLineAction());
+        toggle.setFocusable(false);
+        toggle.setFont(Theme.mono(12));
+        toggle.setMargin(new Insets(0, 0, 0, 0));
+        toggle.setPreferredSize(new Dimension(buttonWidth, BUTTON_HEIGHT));
+        toggle.setMinimumSize(new Dimension(buttonWidth, BUTTON_HEIGHT));
+        toggle.setMaximumSize(new Dimension(buttonWidth, BUTTON_HEIGHT));
+        toggle.setBorder(Theme.raisedBorder());
+        toggle.setBackground(Theme.BUTTON_BACKGROUND);
+        toggle.setForeground(Theme.WINDOW_FOREGROUND);
+        singleLineToggle = toggle;
+        return toggle;
     }
 
     private Component strut() {
