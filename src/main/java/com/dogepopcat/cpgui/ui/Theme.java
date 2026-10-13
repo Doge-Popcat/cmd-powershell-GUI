@@ -383,6 +383,7 @@ public final class Theme {
         set("MenuItemUI", "javax.swing.plaf.basic.BasicMenuItemUI");
         set("PopupMenuUI", "javax.swing.plaf.basic.BasicPopupMenuUI");
         set("OptionPaneUI", "javax.swing.plaf.basic.BasicOptionPaneUI");
+
         set("ToolBarUI", "javax.swing.plaf.basic.BasicToolBarUI");
         set("ListUI", "javax.swing.plaf.basic.BasicListUI");
         set("TreeUI", "javax.swing.plaf.basic.BasicTreeUI");
@@ -558,21 +559,34 @@ public final class Theme {
         // it is on screen is what colours those, and a background with an
         // unstyled black label on it is exactly the unreadable row reported.
         chooser.addHierarchyListener(new java.awt.event.HierarchyListener() {
-            private boolean restyled;
+            private javax.swing.Timer passes;
 
             @Override
             public void hierarchyChanged(java.awt.event.HierarchyEvent event) {
-                if (restyled || !chooser.isShowing()) {
+                if (!chooser.isShowing()) {
                     return;
                 }
-                restyled = true;
-                java.awt.EventQueue.invokeLater(() -> {
-                    Color laterField = isDark() ? EDITOR_BACKGROUND : java.awt.Color.WHITE;
-                    Color laterChrome = isDark() ? WINDOW_BACKGROUND
+                if (passes != null) {
+                    return;
+                }
+                // One pass is not enough: the file chooser builds its short cut
+                // side bar and its labels while the dialog is being shown, and
+                // the look and feel resets their colours as it goes. Several
+                // passes over the first second and a half land after all of that,
+                // which is what colours the labels that stayed black.
+                final int[] remaining = {6};
+                passes = new javax.swing.Timer(250, tick -> {
+                    Color passField = isDark() ? EDITOR_BACKGROUND : java.awt.Color.WHITE;
+                    Color passChrome = isDark() ? WINDOW_BACKGROUND
                             : new Color(0xF4, 0xF5, 0xF7);
-                    styleDescendants(chooser, laterField, laterChrome);
+                    styleDescendants(chooser, passField, passChrome);
                     chooser.repaint();
+                    if (--remaining[0] <= 0) {
+                        passes.stop();
+                    }
                 });
+                passes.setInitialDelay(0);
+                passes.start();
             }
         });
     }
