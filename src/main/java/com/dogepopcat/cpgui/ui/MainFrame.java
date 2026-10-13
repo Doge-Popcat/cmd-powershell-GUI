@@ -1210,6 +1210,10 @@ public class MainFrame extends JFrame {
         // The session queues the script, so a run that arrives while the previous
         // one, or the internal directory query, is still in flight is not lost.
 
+        // Everything that runs is remembered, so Up at the prompt recalls a
+        // command that was run from the editor as well as one typed there.
+        console.rememberCommand(script);
+
         int commandCount = ScriptParser.executableCount(tab.shellKind(), script);
         echoScript(tab, script);
         try {

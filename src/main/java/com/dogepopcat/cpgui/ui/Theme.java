@@ -552,6 +552,29 @@ public final class Theme {
         chooser.setForeground(WINDOW_FOREGROUND);
         styleDescendants(chooser, field, chrome);
         chooser.repaint();
+
+        // The Windows file pane builds its short cut side bar and other parts the
+        // first time the dialog is shown, which is after this call. Restyling once
+        // it is on screen is what colours those, and a background with an
+        // unstyled black label on it is exactly the unreadable row reported.
+        chooser.addHierarchyListener(new java.awt.event.HierarchyListener() {
+            private boolean restyled;
+
+            @Override
+            public void hierarchyChanged(java.awt.event.HierarchyEvent event) {
+                if (restyled || !chooser.isShowing()) {
+                    return;
+                }
+                restyled = true;
+                java.awt.EventQueue.invokeLater(() -> {
+                    Color laterField = isDark() ? EDITOR_BACKGROUND : java.awt.Color.WHITE;
+                    Color laterChrome = isDark() ? WINDOW_BACKGROUND
+                            : new Color(0xF4, 0xF5, 0xF7);
+                    styleDescendants(chooser, laterField, laterChrome);
+                    chooser.repaint();
+                });
+            }
+        });
     }
 
     /**
@@ -581,7 +604,7 @@ public final class Theme {
             text.setForeground(EDITOR_FOREGROUND);
             text.setCaretColor(EDITOR_FOREGROUND);
         } else if (component instanceof javax.swing.JLabel label) {
-            label.setForeground(WINDOW_FOREGROUND);
+            label.setForeground(isDark() ? WINDOW_FOREGROUND : new Color(0x1F, 0x23, 0x29));
         } else if (component instanceof javax.swing.JComboBox<?> combo) {
             combo.setBackground(field);
             combo.setForeground(EDITOR_FOREGROUND);

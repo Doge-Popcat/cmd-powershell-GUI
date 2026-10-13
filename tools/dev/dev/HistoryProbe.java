@@ -51,6 +51,7 @@ public final class HistoryProbe {
         });
         MainFrame frame = holder[0];
         JTextField field = frame.console().inputField();
+        com.dogepopcat.cpgui.ui.EditorTab tab = frame.editorTabs().current();
 
         // A command is remembered only once it has been run.
         int rememberable = 0;
@@ -96,6 +97,35 @@ public final class HistoryProbe {
         Thread.sleep(200);
         report("rem half written".equals(field.getText()),
                 "Down brings the draft back", "[" + field.getText() + "]");
+
+        // A command run from the editor must be in the same history, otherwise
+        // Up appears to do nothing for a user who runs everything from there.
+        int before = frame.console().historySize();
+        SwingUtilities.invokeAndWait(() -> tab.setText("rem run-from-the-editor"));
+        SwingUtilities.invokeAndWait(frame::runWholeScript);
+        Thread.sleep(2000);
+        report(frame.console().historySize() > before,
+                "a command run from the editor is remembered",
+                "history " + before + " -> " + frame.console().historySize());
+
+        SwingUtilities.invokeAndWait(() -> field.setText(""));
+        Thread.sleep(150);
+        SwingUtilities.invokeAndWait(() -> press(field, KeyEvent.VK_UP));
+        Thread.sleep(200);
+        report("rem run-from-the-editor".equals(field.getText()),
+                "Up recalls the command run from the editor", "[" + field.getText() + "]");
+
+        // The output area is part of the console, so the arrow keys work there.
+        JComponent output = frame.console().outputComponent();
+        SwingUtilities.invokeAndWait(() -> output.requestFocusInWindow());
+        Thread.sleep(200);
+        SwingUtilities.invokeAndWait(() -> {
+            field.setText("");
+            press(output, KeyEvent.VK_UP);
+        });
+        Thread.sleep(300);
+        report(!field.getText().isEmpty(),
+                "Up in the output area recalls a command", "[" + field.getText() + "]");
     }
 
     /** Runs a command through the console, and reports whether it was kept. */

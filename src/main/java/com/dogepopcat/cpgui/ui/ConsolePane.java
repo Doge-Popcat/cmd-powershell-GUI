@@ -133,26 +133,44 @@ public class ConsolePane extends JPanel {
      * replaces the input and action maps and would otherwise drop the keys.</p>
      */
     private void installHistoryKeys() {
-        input.getInputMap(JComponent.WHEN_FOCUSED).put(
-                KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_UP, 0), "cpgui.console.prev");
-        input.getInputMap(JComponent.WHEN_FOCUSED).put(
-                KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_DOWN, 0), "cpgui.console.next");
-        input.getActionMap().put("cpgui.console.prev", new AbstractAction() {
-            private static final long serialVersionUID = 1L;
+        // The output area is part of the console too, so the arrow keys work
+        // there and hand the recalled command back to the input line. Without
+        // this, pressing Up after clicking in the output did nothing at all.
+        bindHistory(text, true);
+        bindHistory(input, false);
+    }
 
-            @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) {
-                recall(-1);
-            }
-        });
-        input.getActionMap().put("cpgui.console.next", new AbstractAction() {
-            private static final long serialVersionUID = 1L;
+    /**
+     * Binds Up and Down on one of the console components.
+     *
+     * @param component the component to bind
+     * @param fromOutput whether the key was pressed in the output area
+     */
+    private void bindHistory(JComponent component, boolean fromOutput) {
+        component.getInputMap(JComponent.WHEN_FOCUSED).put(
+                KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_UP, 0),
+                fromOutput ? "cpgui.console.prevOut" : "cpgui.console.prev");
+        component.getInputMap(JComponent.WHEN_FOCUSED).put(
+                KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_DOWN, 0),
+                fromOutput ? "cpgui.console.nextOut" : "cpgui.console.next");
+        component.getActionMap().put(fromOutput ? "cpgui.console.prevOut" : "cpgui.console.prev",
+                new AbstractAction() {
+                    private static final long serialVersionUID = 1L;
 
-            @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) {
-                recall(1);
-            }
-        });
+                    @Override
+                    public void actionPerformed(java.awt.event.ActionEvent e) {
+                        recall(-1, fromOutput);
+                    }
+                });
+        component.getActionMap().put(fromOutput ? "cpgui.console.nextOut" : "cpgui.console.next",
+                new AbstractAction() {
+                    private static final long serialVersionUID = 1L;
+
+                    @Override
+                    public void actionPerformed(java.awt.event.ActionEvent e) {
+                        recall(1, fromOutput);
+                    }
+                });
     }
 
     /** Re-applies the palette after a theme change. */
@@ -168,12 +186,36 @@ public class ConsolePane extends JPanel {
         input.setToolTipText(Msg.CONSOLE_INPUT_TIP.text());
     }
 
+    /**
+     * Adds a command to the history without running it.
+     *
+     * <p>Commands run from the editor belong in the same history as the ones
+     * typed at the prompt, otherwise the Up key appears to do nothing for a user
+     * who runs everything from the editor.</p>
+     *
+     * @param command the command that was run
+     */
+    public void rememberCommand(String command) {
+        if (command == null || command.isBlank()) {
+            return;
+        }
+        String trimmed = command.strip();
+        if (!history.isEmpty() && history.get(history.size() - 1).equals(trimmed)) {
+            // Running the same thing twice in a row should not fill the history.
+            historyIndex = history.size();
+            return;
+        }
+        history.add(trimmed);
+        historyIndex = history.size();
+        draft = "";
+    }
+
     private void submitInput() {
         String command = input.getText();
         if (command == null || command.isBlank()) {
             return;
         }
-        history.add(command);
+        rememberCommand(command);
         historyIndex = history.size();
         draft = "";
         input.setText("");
@@ -196,6 +238,15 @@ public class ConsolePane extends JPanel {
      * reset the position, otherwise the second Up press would start from the
      * newest command again and only the last one would ever be reachable.</p>
      */
+    private void recall(int delta, boolean fromOutput) {
+        if (fromOutput) {
+            // The keys were pressed in the output area, so move to the input line
+            // before putting the command there.
+            input.requestFocusInWindow();
+        }
+        recall(delta);
+    }
+
     private void recall(int delta) {
         if (history.isEmpty()) {
             return;
@@ -291,6 +342,11 @@ public class ConsolePane extends JPanel {
      */
     public void setRunSeparator(boolean runSeparator) {
         this.runSeparator = runSeparator;
+    }
+
+    /** @return the output area, exposed for tests. */
+    public JComponent outputComponent() {
+        return text;
     }
 
     /** @return how many commands the history holds, exposed for tests. */
