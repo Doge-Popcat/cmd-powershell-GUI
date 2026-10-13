@@ -85,7 +85,8 @@ public final class HelpWindow extends JDialog {
     private final JEditorPane detail = new JEditorPane();
     private final JTabbedPane tabs = new JTabbedPane();
 
-    private Consumer<String> helpInConsole = command -> { };
+    /** Receives the interpreter the listed command belongs to, and its name. */
+    private java.util.function.BiConsumer<ShellKind, String> helpInConsole = (kind, command) -> { };
 
     private HelpWindow(Window owner) {
         super(owner, Msg.HELP_TITLE.text(), ModalityType.MODELESS);
@@ -104,9 +105,10 @@ public final class HelpWindow extends JDialog {
      *               interpreter's own help
      * @return the window, so the caller can bring it to the front again
      */
-    public static HelpWindow open(Window owner, ShellKind kind, Consumer<String> runner) {
+    public static HelpWindow open(Window owner, ShellKind kind,
+                                   java.util.function.BiConsumer<ShellKind, String> runner) {
         HelpWindow window = new HelpWindow(owner);
-        window.helpInConsole = runner == null ? command -> { } : runner;
+        window.helpInConsole = runner == null ? (shell, command) -> { } : runner;
         window.selectShell(kind);
         window.setVisible(true);
         return window;
@@ -162,7 +164,10 @@ public final class HelpWindow extends JDialog {
         showHelp.addActionListener(e -> {
             CompletionItem selected = list.getSelectedValue();
             if (selected != null) {
-                helpInConsole.accept(selected.label());
+                // The kind is passed along because the list may belong to a
+                // different interpreter than the tab that is now active, and
+                // running one interpreter's command in the other fails.
+                helpInConsole.accept(kind, selected.label());
             }
         });
         JButton openDocs = new JButton(Msg.HELP_OPEN_DOCS.text());

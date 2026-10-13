@@ -52,6 +52,8 @@ public enum Msg {
     HELP_DOC_CHINESE("Chinese", "\u4e2d\u6587"),
     HELP_NOTHING_SELECTED("Select a command to see its description.",
             "\u9009\u62e9\u4e00\u6761\u547d\u4ee4\u4ee5\u67e5\u770b\u8bf4\u660e\u3002"),
+    STATUS_HELP_WRONG_SHELL("That command belongs to %s; switch the interpreter to %s first.",
+            "\u8be5\u547d\u4ee4\u5c5e\u4e8e %s\uff0c\u8bf7\u5148\u5c06\u89e3\u91ca\u5668\u5207\u6362\u4e3a %s\u3002"),
     HELP_USAGE_HINT("Press \"Show the interpreter's own help\" to see the full syntax in the console.",
             "\u70b9\u51fb\u201c\u5728\u63a7\u5236\u53f0\u663e\u793a\u89e3\u91ca\u5668\u81ea\u5e26\u5e2e\u52a9\u201d\u53ef\u5728\u63a7\u5236\u53f0\u67e5\u770b\u5b8c\u6574\u8bed\u6cd5\u3002"),
     MENU_THEME("Theme", "\u4e3b\u9898"),

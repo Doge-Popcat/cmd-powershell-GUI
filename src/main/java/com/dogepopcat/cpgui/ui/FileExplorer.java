@@ -72,6 +72,7 @@ public class FileExplorer extends JPanel {
     private final DefaultTreeModel model = new DefaultTreeModel(new Node(null, true));
     private final JTree tree = new JTree(model);
     private final JLabel caption = new JLabel();
+    private final JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
 
     private File rootDirectory;
     private Consumer<File> openHandler = file -> { };
@@ -90,7 +91,6 @@ public class FileExplorer extends JPanel {
 
         JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         buttons.setOpaque(false);
         buttons.add(newFile);
         buttons.add(newFolder);
@@ -161,10 +161,29 @@ public class FileExplorer extends JPanel {
 
     private void refreshText() {
         caption.setText(Msg.EXPLORER_TITLE.text());
+        restyleButtons();
         repaint();
     }
 
+    /** Recolours the header buttons for the palette in use. */
+    private void restyleButtons() {
+        buttons.setBackground(Theme.WINDOW_BACKGROUND);
+        if (buttons.getParent() != null) {
+            buttons.getParent().setBackground(Theme.WINDOW_BACKGROUND);
+        }
+        for (java.awt.Component component : buttons.getComponents()) {
+            if (component instanceof JButton button) {
+                button.setBackground(Theme.BUTTON_BACKGROUND);
+                button.setForeground(Theme.WINDOW_FOREGROUND);
+                button.setBorder(Theme.raisedBorder());
+            }
+        }
+    }
+
     void applyTheme() {
+        // The buttons were coloured once when they were built and stayed dark in
+        // the light palette, which is the grey they appeared as.
+        restyleButtons();
         setBackground(Theme.WINDOW_BACKGROUND);
         caption.setForeground(Theme.WINDOW_FOREGROUND);
         tree.setBackground(Theme.isDark() ? Theme.EDITOR_BACKGROUND : java.awt.Color.WHITE);

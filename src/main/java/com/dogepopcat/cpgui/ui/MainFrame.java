@@ -510,14 +510,27 @@ public class MainFrame extends JFrame {
             helpWindow.toFront();
             return;
         }
-        helpWindow = HelpWindow.open(this, kind, command -> {
+        helpWindow = HelpWindow.open(this, kind, (commandKind, command) -> {
             EditorTab target = editorTabs.current();
             if (target == null) {
                 return;
             }
-            String request = target.shellKind() == ShellKind.CMD
+            if (target.shellKind() != commandKind) {
+                // Running a cmd built-in in PowerShell, or the other way round,
+                // fails with a confusing message, so the mismatch is reported
+                // rather than submitting a command that cannot work.
+                selectBottomTab(BottomTab.OUTPUT);
+                console.appendError(Msg.STATUS_HELP_WRONG_SHELL.format(
+                        commandKind.displayName(), target.shellKind().displayName())
+                        + System.lineSeparator());
+                statusBar.setMessage(Msg.STATUS_HELP_WRONG_SHELL.format(
+                        commandKind.displayName(), target.shellKind().displayName()));
+                statusBar.setMessageColor(Theme.WARNING);
+                return;
+            }
+            String request = commandKind == ShellKind.CMD
                     ? command + " /?"
-                    : "Get-Help " + command + " -Full";
+                    : "Get-Help '" + command + "' -Full";
             selectBottomTab(BottomTab.OUTPUT);
             execute(target, request);
         });

@@ -294,7 +294,9 @@ public final class Theme {
         CONSOLE_INFO = new Color(0x9A, 0xA4, 0xB2);
         CONSOLE_SYSTEM = new Color(0xE5, 0xC0, 0x7B);
 
-        BUTTON_BACKGROUND = new Color(0xF7, 0xF8, 0xFA);
+        // White on a light grey tool bar, so the button reads as raised rather
+        // than as a grey patch of the same shade as its background.
+        BUTTON_BACKGROUND = new Color(0xFF, 0xFF, 0xFF);
         BUTTON_BORDER = new Color(0x3A, 0x3F, 0x46);
         BUTTON_HOVER = new Color(0xE4, 0xEC, 0xF6);
         BUTTON_ELEVATED = new Color(0xFF, 0xE2, 0xB8);
@@ -416,7 +418,7 @@ public final class Theme {
         set("TabbedPane.shadow", dark ? new Color(0x1E, 0x1F, 0x22) : null);
         // Buttons sit on the tool bar, so they use the button colour rather than
         // the grey control colour, which looked dingy in the light palette.
-        set("Button.background", dark ? control : new Color(0xF7, 0xF8, 0xFA));
+        set("Button.background", dark ? control : Color.WHITE);
         set("Button.foreground", text);
         set("TextField.background", field);
         set("TextField.foreground", text);
