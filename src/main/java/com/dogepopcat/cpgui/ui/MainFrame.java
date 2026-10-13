@@ -868,6 +868,7 @@ public class MainFrame extends JFrame {
 
     private javax.swing.JFileChooser scriptChooser(String title) {
         javax.swing.JFileChooser chooser = new javax.swing.JFileChooser(workspace);
+        Theme.styleChooser(chooser);
         chooser.setDialogTitle(title);
         chooser.setAcceptAllFileFilterUsed(true);
         chooser.addChoosableFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
@@ -1308,6 +1309,7 @@ public class MainFrame extends JFrame {
      */
     public void chooseWorkspace() {
         javax.swing.JFileChooser chooser = new javax.swing.JFileChooser(workspace);
+        Theme.styleChooser(chooser);
         chooser.setDialogTitle(Msg.DIALOG_CHOOSE_FOLDER.text());
         chooser.setFileSelectionMode(javax.swing.JFileChooser.DIRECTORIES_ONLY);
         chooser.setAcceptAllFileFilterUsed(false);

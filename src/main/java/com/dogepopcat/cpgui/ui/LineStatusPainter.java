@@ -27,8 +27,30 @@ public final class LineStatusPainter extends LayeredHighlighter.LayerPainter {
 
     @Override
     public void paint(Graphics g, int p0, int p1, Shape bounds, JTextComponent component) {
-        Rectangle area = bounds.getBounds();
-        fill(g, area);
+        // This is the fallback the highlighter uses when it cannot paint per
+        // view. The bounds it passes cover the whole component, so the rectangle
+        // is derived from the offsets instead; filling the bounds directly is
+        // what marked every line in the document.
+        Rectangle area = rectangleFor(p0, p1, component);
+        fill(g, area == null ? bounds.getBounds() : area);
+    }
+
+    /** @return the rectangle covering an offset range, or {@code null}. */
+    private static Rectangle rectangleFor(int p0, int p1, JTextComponent component) {
+        try {
+            Shape start = component.modelToView2D(p0);
+            Shape end = component.modelToView2D(p1);
+            if (start == null || end == null) {
+                return null;
+            }
+            Rectangle a = start.getBounds();
+            Rectangle b = end.getBounds();
+            int top = Math.min(a.y, b.y);
+            int height = Math.max(a.height, b.height);
+            return new Rectangle(a.x, top, Math.max(1, b.x - a.x), height);
+        } catch (BadLocationException e) {
+            return null;
+        }
     }
 
     @Override
@@ -41,6 +63,9 @@ public final class LineStatusPainter extends LayeredHighlighter.LayerPainter {
                     p1, Position.Bias.Backward, viewBounds);
             area = shape instanceof Rectangle rectangle ? rectangle : shape.getBounds();
         } catch (BadLocationException | IllegalArgumentException e) {
+            return null;
+        }
+        if (area == null || area.height <= 0) {
             return null;
         }
         // Extend to the full width of the component, so the whole row is washed

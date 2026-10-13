@@ -298,6 +298,7 @@ public enum Msg {
     FONTS_FAMILY("Font:", "\u5b57\u4f53\uff1a"),
     FONTS_STYLE("Style:", "\u5b57\u5f62\uff1a"),
     FONTS_SIZE("Size:", "\u5927\u5c0f\uff1a"),
+    FONTS_STYLE_PLAIN("Regular", "\u5e38\u89c4"),
     FONTS_STYLE_BOLD("Bold", "\u52a0\u7c97"),
     FONTS_STYLE_ITALIC("Italic", "\u659c\u4f53"),
     FONTS_STYLE_BOLD_ITALIC("Bold Italic", "\u52a0\u7c97\u659c\u4f53"),

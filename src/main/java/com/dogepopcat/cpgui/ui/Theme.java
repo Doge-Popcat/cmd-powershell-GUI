@@ -414,7 +414,9 @@ public final class Theme {
         set("TabbedPane.light", background);
         set("TabbedPane.highlight", background);
         set("TabbedPane.shadow", dark ? new Color(0x1E, 0x1F, 0x22) : null);
-        set("Button.background", control);
+        // Buttons sit on the tool bar, so they use the button colour rather than
+        // the grey control colour, which looked dingy in the light palette.
+        set("Button.background", dark ? control : new Color(0xF7, 0xF8, 0xFA));
         set("Button.foreground", text);
         set("TextField.background", field);
         set("TextField.foreground", text);
@@ -526,6 +528,47 @@ public final class Theme {
     private static void set(String key, Object value) {
         if (value != null) {
             UIManager.put(key, value);
+        }
+    }
+
+    /**
+     * Colours a file chooser to match the palette.
+     *
+     * <p>The chooser keeps its own list and field colours, so setting the global
+     * defaults is not enough: without this the list stays white while the text
+     * colour follows the palette, which leaves grey text on white.</p>
+     *
+     * @param chooser the chooser to style
+     */
+    public static void styleChooser(javax.swing.JFileChooser chooser) {
+        Color field = isDark() ? EDITOR_BACKGROUND : java.awt.Color.WHITE;
+        chooser.setBackground(WINDOW_BACKGROUND);
+        chooser.setForeground(WINDOW_FOREGROUND);
+        for (java.awt.Component component : chooser.getComponents()) {
+            styleDescendants(component, field);
+        }
+        chooser.repaint();
+    }
+
+    /** Applies the palette to a chooser component and everything under it. */
+    private static void styleDescendants(java.awt.Component component, Color field) {
+        if (component instanceof javax.swing.JList<?> list) {
+            list.setBackground(field);
+            list.setForeground(EDITOR_FOREGROUND);
+        } else if (component instanceof javax.swing.JTextField text) {
+            text.setBackground(field);
+            text.setForeground(EDITOR_FOREGROUND);
+        } else if (component instanceof javax.swing.JLabel label) {
+            label.setForeground(WINDOW_FOREGROUND);
+        } else if (component instanceof javax.swing.JComboBox<?> combo) {
+            combo.setBackground(field);
+            combo.setForeground(EDITOR_FOREGROUND);
+        }
+        if (component instanceof java.awt.Container container) {
+            container.setBackground(isDark() ? WINDOW_BACKGROUND : new Color(0xF4, 0xF5, 0xF7));
+            for (java.awt.Component child : container.getComponents()) {
+                styleDescendants(child, field);
+            }
         }
     }
 

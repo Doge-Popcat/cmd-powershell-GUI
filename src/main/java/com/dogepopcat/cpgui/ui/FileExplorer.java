@@ -197,9 +197,57 @@ public class FileExplorer extends JPanel {
         }
     }
 
-    /** Re-reads the root and the expanded folders. */
+    /**
+     * Re-reads the root and every folder that was open.
+     *
+     * <p>Rebuilding only the root left open folders showing stale children, so
+     * a file created inside one did not appear until it was collapsed and
+     * expanded again. The open paths are remembered and reopened.</p>
+     */
     public void refresh() {
+        List<File> open = new ArrayList<>();
+        for (int row = 0; row < tree.getRowCount(); row++) {
+            TreePath path = tree.getPathForRow(row);
+            if (path != null && tree.isExpanded(path)
+                    && path.getLastPathComponent() instanceof Node node
+                    && node.file() != null) {
+                open.add(node.file());
+            }
+        }
         setRootDirectory(rootDirectory);
+        for (File directory : open) {
+            TreePath path = pathOf(directory);
+            if (path != null) {
+                tree.expandPath(path);
+            }
+        }
+    }
+
+    /** @return the tree path of a directory, or {@code null} when it is not shown. */
+    private TreePath pathOf(File directory) {
+        Node root = (Node) model.getRoot();
+        if (root == null || root.file() == null) {
+            return null;
+        }
+        if (directory.equals(root.file())) {
+            return new TreePath(root.getPath());
+        }
+        java.util.ArrayDeque<Node> queue = new java.util.ArrayDeque<>();
+        queue.add(root);
+        while (!queue.isEmpty()) {
+            Node node = queue.poll();
+            for (int i = 0; i < node.getChildCount(); i++) {
+                if (node.getChildAt(i) instanceof Node child && child.file() != null) {
+                    if (directory.equals(child.file())) {
+                        return new TreePath(child.getPath());
+                    }
+                    if (child.isDirectory()) {
+                        queue.add(child);
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     /** @return the directory the tree is showing. */

@@ -143,6 +143,8 @@ public final class HelpWindow extends JDialog {
 
         detail.setEditable(false);
         detail.setContentType("text/html");
+        detail.setBackground(Theme.isDark() ? Theme.EDITOR_BACKGROUND : java.awt.Color.WHITE);
+        detail.setForeground(Theme.EDITOR_FOREGROUND);
         detail.setFont(Theme.mono(12));
         detail.setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 10));
 
@@ -242,12 +244,16 @@ public final class HelpWindow extends JDialog {
     private void showDetail() {
         CompletionItem item = list.getSelectedValue();
         if (item == null) {
-            detail.setText("<html><body style='font-family:monospace'>"
+            detail.setText("<html><body style='font-family:monospace;background:"
+                    + cssColour(Theme.EDITOR_BACKGROUND) + ";color:"
+                    + cssColour(Theme.EDITOR_FOREGROUND) + "'>"
                     + Msg.HELP_NOTHING_SELECTED.text() + "</body></html>");
             return;
         }
         StringBuilder html = new StringBuilder();
-        html.append("<html><body style='font-family:monospace;font-size:11px'>");
+        html.append("<html><body style='font-family:monospace;font-size:11px;background:")
+                .append(cssColour(Theme.EDITOR_BACKGROUND)).append(";color:")
+                .append(cssColour(Theme.EDITOR_FOREGROUND)).append("'>");
         html.append("<h2 style='margin:0 0 6px 0'>").append(escape(item.label())).append("</h2>");
         html.append("<p>").append(escape(item.detail())).append("</p>");
 
@@ -255,14 +261,16 @@ public final class HelpWindow extends JDialog {
                 CommandCatalog.switchesFor(kind, item.label()));
         parameters.addAll(CommandCatalog.commonParameters(kind));
         if (!parameters.isEmpty()) {
-            html.append("<h3>").append(escape(Msg.HELP_PARAMETERS.text())).append("</h3><ul>");
+            html.append("<h3 style='color:").append(cssColour(Theme.SYNTAX_COMMAND))
+                    .append("'>").append(escape(Msg.HELP_PARAMETERS.text())).append("</h3><ul>");
             for (CompletionItem parameter : parameters) {
                 html.append("<li><b>").append(escape(parameter.label())).append("</b> &mdash; ")
                         .append(escape(parameter.detail())).append("</li>");
             }
             html.append("</ul>");
         }
-        html.append("<p style='color:#888'>").append(escape(Msg.HELP_USAGE_HINT.text()))
+        html.append("<p style='color:").append(cssColour(Theme.WINDOW_MUTED)).append("'>")
+                .append(escape(Msg.HELP_USAGE_HINT.text()))
                 .append("</p>");
         html.append("</body></html>");
         detail.setText(html.toString());
@@ -314,6 +322,12 @@ public final class HelpWindow extends JDialog {
             setForeground(selected ? java.awt.Color.WHITE : Theme.EDITOR_FOREGROUND);
             return this;
         }
+    }
+
+    /** @return a colour as a CSS value the HTML pane understands. */
+    private static String cssColour(java.awt.Color colour) {
+        return String.format("#%02X%02X%02X",
+                colour.getRed(), colour.getGreen(), colour.getBlue());
     }
 
     private static String escape(String value) {
