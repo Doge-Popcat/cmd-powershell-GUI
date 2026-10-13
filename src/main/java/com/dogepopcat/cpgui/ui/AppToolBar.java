@@ -49,6 +49,8 @@ public class AppToolBar extends JToolBar {
     private final int buttonWidth;
     private JButton adminButton;
     private JToggleButton singleLineToggle;
+    private JComboBox<ConsoleMode> consoleMode;
+    private JLabel modeLabel;
     private boolean syncing;
     private boolean elevated;
 
@@ -71,6 +73,7 @@ public class AppToolBar extends JToolBar {
         add(button(frame.runAction()));
         add(singleLineToggle(frame));
         add(button(frame.stopAction()));
+        add(button(frame.restartSessionAction()));
         add(strut());
         add(button(frame.workspaceAction()));
         adminButton = button(frame.adminAction());
@@ -79,6 +82,9 @@ public class AppToolBar extends JToolBar {
 
         add(Box.createHorizontalGlue());
         interpreterLabel.setFont(Theme.mono(12));
+        if (modeLabel != null) {
+            modeLabel.setFont(Theme.mono(12));
+        }
         add(interpreterLabel);
         interpreter.setMaximumSize(new Dimension(160, BUTTON_HEIGHT));
         interpreter.setPreferredSize(new Dimension(150, BUTTON_HEIGHT));
@@ -88,12 +94,34 @@ public class AppToolBar extends JToolBar {
             }
         });
         add(interpreter);
+
+        add(strut());
+        modeLabel = new JLabel();
+        modeLabel.setFont(Theme.mono(12));
+        add(modeLabel);
+        consoleMode = new JComboBox<>(ConsoleMode.values());
+        consoleMode.setFont(Theme.mono(12));
+        consoleMode.setFocusable(false);
+        consoleMode.setMaximumSize(new Dimension(150, BUTTON_HEIGHT));
+        consoleMode.setPreferredSize(new Dimension(110, BUTTON_HEIGHT));
+        consoleMode.addActionListener(e -> {
+            if (!syncing && consoleMode.getSelectedItem() instanceof ConsoleMode mode) {
+                frame.setConsoleMode(mode);
+            }
+        });
+        add(consoleMode);
+
         Messages.addListener(language -> refreshText());
         Theme.addListener(this::applyTheme);
         // The palette must be applied now, not only on a later change: the look
         // and feel defaults are light whatever the chosen theme is.
         applyTheme();
         refreshText();
+    }
+
+    /** @return the console mode selector, exposed for tests. */
+    public JComboBox<ConsoleMode> consoleModeBox() {
+        return consoleMode;
     }
 
     /** Re-applies the palette to every button after a theme change. */
@@ -122,6 +150,16 @@ public class AppToolBar extends JToolBar {
         interpreterLabel.setText(Msg.TOOLBAR_INTERPRETER.text());
         interpreterLabel.setForeground(Theme.WINDOW_FOREGROUND);
         interpreter.setToolTipText(Msg.TOOLBAR_INTERPRETER_TIP.text());
+        if (modeLabel != null) {
+            modeLabel.setText(Msg.TOOLBAR_MODE.text());
+            modeLabel.setForeground(Theme.WINDOW_FOREGROUND);
+        }
+        if (consoleMode != null) {
+            consoleMode.setToolTipText(consoleMode.getSelectedItem() instanceof ConsoleMode mode
+                    ? mode.description() : "");
+            consoleMode.setBackground(Theme.isDark() ? Theme.EDITOR_BACKGROUND : java.awt.Color.WHITE);
+            consoleMode.setForeground(Theme.WINDOW_FOREGROUND);
+        }
         interpreter.setBackground(Theme.isDark() ? Theme.EDITOR_BACKGROUND : java.awt.Color.WHITE);
         interpreter.setForeground(Theme.WINDOW_FOREGROUND);
     }
@@ -135,6 +173,9 @@ public class AppToolBar extends JToolBar {
             component.setFont(Theme.mono(12));
         }
         interpreterLabel.setFont(Theme.mono(12));
+        if (modeLabel != null) {
+            modeLabel.setFont(Theme.mono(12));
+        }
     }
 
     /**

@@ -543,33 +543,68 @@ public final class Theme {
      * @param chooser the chooser to style
      */
     public static void styleChooser(javax.swing.JFileChooser chooser) {
+        // The chooser builds its own components, so the look and feel is asked to
+        // rebuild them against the current defaults before anything is coloured.
+        javax.swing.SwingUtilities.updateComponentTreeUI(chooser);
         Color field = isDark() ? EDITOR_BACKGROUND : java.awt.Color.WHITE;
-        chooser.setBackground(WINDOW_BACKGROUND);
+        Color chrome = isDark() ? WINDOW_BACKGROUND : new Color(0xF4, 0xF5, 0xF7);
+        chooser.setBackground(chrome);
         chooser.setForeground(WINDOW_FOREGROUND);
-        for (java.awt.Component component : chooser.getComponents()) {
-            styleDescendants(component, field);
-        }
+        styleDescendants(chooser, field, chrome);
         chooser.repaint();
     }
 
-    /** Applies the palette to a chooser component and everything under it. */
-    private static void styleDescendants(java.awt.Component component, Color field) {
-        if (component instanceof javax.swing.JList<?> list) {
+    /**
+     * Applies the palette to a chooser component and everything under it.
+     *
+     * <p>Every kind of component the chooser uses has to be covered. The details
+     * view is a table, and a table that is missed keeps the light default, which
+     * is what left the file list white inside an otherwise dark dialog.</p>
+     */
+    private static void styleDescendants(java.awt.Component component, Color field,
+                                         Color chrome) {
+        boolean leaf = true;
+        if (component instanceof javax.swing.JTable table) {
+            table.setBackground(field);
+            table.setForeground(EDITOR_FOREGROUND);
+            table.setGridColor(isDark() ? tint(chrome, 24) : new Color(0xD0, 0xD4, 0xDA));
+            if (table.getTableHeader() != null) {
+                table.getTableHeader().setBackground(isDark() ? tint(chrome, 16)
+                        : new Color(0xE8, 0xEA, 0xED));
+                table.getTableHeader().setForeground(WINDOW_FOREGROUND);
+            }
+        } else if (component instanceof javax.swing.JList<?> list) {
             list.setBackground(field);
             list.setForeground(EDITOR_FOREGROUND);
-        } else if (component instanceof javax.swing.JTextField text) {
+        } else if (component instanceof javax.swing.text.JTextComponent text) {
             text.setBackground(field);
             text.setForeground(EDITOR_FOREGROUND);
+            text.setCaretColor(EDITOR_FOREGROUND);
         } else if (component instanceof javax.swing.JLabel label) {
             label.setForeground(WINDOW_FOREGROUND);
         } else if (component instanceof javax.swing.JComboBox<?> combo) {
             combo.setBackground(field);
             combo.setForeground(EDITOR_FOREGROUND);
+        } else if (component instanceof javax.swing.JButton button) {
+            button.setBackground(BUTTON_BACKGROUND);
+            button.setForeground(WINDOW_FOREGROUND);
+        } else if (component instanceof javax.swing.JViewport viewport) {
+            viewport.setBackground(field);
+        } else if (component instanceof javax.swing.JScrollPane scroll) {
+            scroll.setBackground(chrome);
+            scroll.getViewport().setBackground(field);
+        } else {
+            leaf = false;
         }
         if (component instanceof java.awt.Container container) {
-            container.setBackground(isDark() ? WINDOW_BACKGROUND : new Color(0xF4, 0xF5, 0xF7));
+            // A list, table or field is a container too; its own background was
+            // just set, and overwriting it here is what made them all the shade
+            // of the surrounding chrome.
+            if (!leaf) {
+                container.setBackground(chrome);
+            }
             for (java.awt.Component child : container.getComponents()) {
-                styleDescendants(child, field);
+                styleDescendants(child, field, chrome);
             }
         }
     }

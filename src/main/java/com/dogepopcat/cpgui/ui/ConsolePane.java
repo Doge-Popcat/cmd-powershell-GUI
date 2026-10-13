@@ -62,6 +62,8 @@ public class ConsolePane extends JPanel {
     private boolean recalling;
     /** True while the interpreter is waiting for an answer to a question. */
     private boolean awaitingInput;
+    /** Whether a rule is drawn between runs. Off in terminal mode. */
+    private boolean runSeparator = true;
 
     private record Segment(String text, Color color) {
     }
@@ -282,6 +284,15 @@ public class ConsolePane extends JPanel {
         input.requestFocusInWindow();
     }
 
+    /**
+     * Turns the rule between runs on or off.
+     *
+     * @param runSeparator {@code false} in terminal mode, where output flows on
+     */
+    public void setRunSeparator(boolean runSeparator) {
+        this.runSeparator = runSeparator;
+    }
+
     /** @return how many commands the history holds, exposed for tests. */
     public int historySize() {
         return history.size();
@@ -346,6 +357,11 @@ public class ConsolePane extends JPanel {
      * previous block.
      */
     public void startBlock() {
+        if (!runSeparator) {
+            // Terminal mode runs on continuously; the interpreter's own prompt
+            // is the only thing separating one command from the next.
+            return;
+        }
         String existing = getText();
         if (existing.isBlank()) {
             return;

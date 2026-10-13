@@ -482,6 +482,30 @@ public final class ShellSession implements AutoCloseable {
         listener.onAwaitingInput();
     }
 
+    /**
+     * Gives up on the run in progress but keeps the interpreter.
+     *
+     * <p>Terminal mode stops a run without throwing the interpreter away, so the
+     * working directory and any variables survive. The command may still be
+     * running; anything submitted next simply waits its turn in the pipe.</p>
+     */
+    public void abandonRun() {
+        synchronized (lock) {
+            awaitingInput = false;
+            interactiveScript = false;
+            if (pending != null) {
+                pending.complete(-1);
+                pending = null;
+                pendingMarker = null;
+                pendingCapture = null;
+                captureBuffer = null;
+            }
+            if (!closed) {
+                startNextLocked();
+            }
+        }
+    }
+
     /** @return {@code true} while the interpreter is waiting for an answer. */
     public boolean isAwaitingInput() {
         return awaitingInput && !closed;

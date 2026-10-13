@@ -72,6 +72,8 @@ public class MainFrame extends JFrame {
     private final FileExplorer explorer = new FileExplorer();
     private JSplitPane horizontalSplit;
     private HelpWindow helpWindow;
+    /** How the console behaves between runs; see the mode selector. */
+    private ConsoleMode consoleMode = ConsoleMode.CLASSIC;
     private volatile boolean elevated;
     private boolean dividerPlaced;
     /** The font every editor tab uses; new tabs inherit it. */
@@ -168,6 +170,9 @@ public class MainFrame extends JFrame {
     private final Action stopAction = action(Msg.ACTION_STOP, Msg.TIP_STOP,
             KeyStroke.getKeyStroke(KeyEvent.VK_F2, 0),
             e -> stopActiveSession());
+
+    private final Action restartSessionAction = action(Msg.ACTION_RESTART_SESSION,
+            Msg.TIP_RESTART_SESSION, null, e -> restartActiveSession());
 
     private final Action workspaceAction = action(Msg.ACTION_WORKSPACE, Msg.TIP_WORKSPACE,
             KeyStroke.getKeyStroke(KeyEvent.VK_K, InputEvent.CTRL_DOWN_MASK),
@@ -423,6 +428,7 @@ public class MainFrame extends JFrame {
         run.add(item(singleLineAction));
         run.addSeparator();
         run.add(item(stopAction));
+        run.add(item(restartSessionAction));
         bar.add(run);
 
         JMenu view = menu(Msg.MENU_VIEW, 'V');
@@ -501,6 +507,44 @@ public class MainFrame extends JFrame {
         statusBar.setMessage(visible
                 ? Msg.STATUS_EXPLORER_SHOWN.text()
                 : Msg.STATUS_EXPLORER_HIDDEN.text());
+    }
+
+    /** @return the console mode in use. */
+    public ConsoleMode consoleMode() {
+        return consoleMode;
+    }
+
+    /**
+     * Switches between block and terminal behaviour.
+     *
+     * <p>Terminal mode keeps one interpreter for the tab and runs its output on
+     * continuously; block mode separates each run and discards the interpreter
+     * when it is stopped.</p>
+     *
+     * @param mode the mode to use
+     */
+    public void setConsoleMode(ConsoleMode mode) {
+        if (mode == null || mode == consoleMode) {
+            return;
+        }
+        this.consoleMode = mode;
+        console.setRunSeparator(mode == ConsoleMode.CLASSIC);
+        statusBar.setMessage(Msg.STATUS_MODE_CHANGED.format(mode.label()));
+    }
+
+    /** Starts a fresh interpreter for the active tab, keeping everything else. */
+    public void restartActiveSession() {
+        EditorTab tab = editorTabs.current();
+        if (tab == null) {
+            return;
+        }
+        ShellKind kind = tab.shellKind();
+        sessions.release(tab);
+        console.setAwaitingInput(false);
+        console.setPrompt(promptName(kind) + ">");
+        console.appendSystem(Msg.STATUS_SESSION_RESTARTED.format(kind.displayName())
+                + System.lineSeparator());
+        statusBar.setMessage(Msg.STATUS_SESSION_RESTARTED.format(kind.displayName()));
     }
 
     /** @return the file tree panel. */
@@ -1310,14 +1354,29 @@ public class MainFrame extends JFrame {
         });
     }
 
-    /** Stops the active tab's interpreter, discarding its state. */
+    /**
+     * Stops whatever the active tab is running.
+     *
+     * <p>In terminal mode the interpreter is kept, so the working directory and
+     * any variables survive and only the run is given up; the interpreter is
+     * replaced only when the user asks for a new one. In block mode the session
+     * is released as before, so the next run starts from a clean interpreter.</p>
+     */
     public void stopActiveSession() {
-        EditorTab tab = editorTabs.current();        if (tab == null) {
+        EditorTab tab = editorTabs.current();
+        if (tab == null) {
             return;
         }
         ShellSession session = sessions.peek(tab);
         if (session == null) {
             statusBar.setMessage(Msg.STATUS_NO_SESSION.text());
+            return;
+        }
+        if (consoleMode == ConsoleMode.TERMINAL) {
+            session.abandonRun();
+            console.setAwaitingInput(false);
+            console.appendSystem(Msg.STATUS_RUN_ABANDONED.text() + System.lineSeparator());
+            statusBar.setMessage(Msg.STATUS_RUN_ABANDONED.text());
             return;
         }
         sessions.release(tab);
@@ -1739,6 +1798,10 @@ public class MainFrame extends JFrame {
     /** @return the main tool bar, exposed for tests. */
     public AppToolBar toolBar() {
         return toolBar;
+    }
+
+    public Action restartSessionAction() {
+        return restartSessionAction;
     }
 
     public Action newTabAction() {
