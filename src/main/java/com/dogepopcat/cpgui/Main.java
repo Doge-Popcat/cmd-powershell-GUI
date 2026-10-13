@@ -135,6 +135,10 @@ public final class Main {
     /**
      * Editor widgets must use a monospaced font even when the platform look and
      * feel would pick a proportional one.
+     *
+     * <p>The font is installed as a UI resource, which is how a look and feel
+     * marks a default it owns: a plain font would count as one the application
+     * chose, and Swing would then never replace it again.</p>
      */
     private static void installMonospacedUIFont() {
         Font mono = new Font(Font.MONOSPACED, Font.PLAIN, 13);
@@ -143,7 +147,7 @@ public final class Main {
                 "TextField.font", "List.font", "Table.font"}) {
             Object current = UIManager.get(key);
             if (current instanceof Font) {
-                UIManager.put(key, mono);
+                UIManager.put(key, new javax.swing.plaf.FontUIResource(mono));
             }
         }
     }

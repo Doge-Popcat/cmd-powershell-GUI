@@ -40,33 +40,49 @@ public final class CompletionPopup {
 
     private final JWindow window = new JWindow();
     private final JList<CompletionItem> list = new JList<>();
+    private final JScrollPane scroll = new JScrollPane(list);
 
     public CompletionPopup() {
         list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         list.setFixedCellHeight(ROW_HEIGHT);
-        list.setBackground(Theme.EDITOR_BACKGROUND);
-        list.setForeground(Theme.EDITOR_FOREGROUND);
-        list.setFont(Theme.mono(12));
         list.setCellRenderer(new Renderer());
         list.setFocusable(false);
 
-        JScrollPane scroll = new JScrollPane(list);
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        scroll.getViewport().setBackground(Theme.EDITOR_BACKGROUND);
         scroll.getVerticalScrollBar().setUnitIncrement(ROW_HEIGHT);
 
         window.setFocusableWindowState(false);
         window.setAlwaysOnTop(true);
-        window.getContentPane().setBackground(Theme.EDITOR_BACKGROUND);
         window.setLayout(new BorderLayout());
         window.add(scroll, BorderLayout.CENTER);
+
+        Theme.addListener(this::applyTheme);
+        applyTheme();
+    }
+
+    /**
+     * Re-applies the palette after a theme change.
+     *
+     * <p>The list lives in a window of its own, so the walk the main window does
+     * on a palette change never reaches it, and the colours captured when the tab
+     * was opened would otherwise be the ones it always showed.</p>
+     */
+    void applyTheme() {
+        javax.swing.SwingUtilities.updateComponentTreeUI(window);
+        list.setBackground(Theme.EDITOR_BACKGROUND);
+        list.setForeground(Theme.EDITOR_FOREGROUND);
+        list.setFont(Theme.mono(12));
+        scroll.getViewport().setBackground(Theme.EDITOR_BACKGROUND);
+        window.getContentPane().setBackground(Theme.EDITOR_BACKGROUND);
+        window.getRootPane().setBackground(Theme.EDITOR_BACKGROUND);
 
         javax.swing.border.Border outer = BorderFactory.createLineBorder(
                 Theme.tint(Theme.GUTTER_BACKGROUND, 60));
         javax.swing.border.Border inner = BorderFactory.createEmptyBorder(
                 VERTICAL_PADDING, 2, VERTICAL_PADDING, 2);
         window.getRootPane().setBorder(BorderFactory.createCompoundBorder(outer, inner));
+        window.repaint();
     }
 
     /**

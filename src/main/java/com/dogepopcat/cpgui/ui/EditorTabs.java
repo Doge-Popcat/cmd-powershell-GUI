@@ -39,6 +39,13 @@ public class EditorTabs extends JTabbedPane {
         setTabLayoutPolicy(SCROLL_TAB_LAYOUT);
         setBorder(BorderFactory.createEmptyBorder());
         addChangeListener(e -> selectionListener.accept(getSelectedIndex()));
+        Theme.addListener(this::applyTheme);
+    }
+
+    /** Re-applies the palette after a theme change. */
+    void applyTheme() {
+        setBackground(Theme.WINDOW_BACKGROUND);
+        refreshHeaders();
     }
 
     /**
@@ -122,7 +129,6 @@ public class EditorTabs extends JTabbedPane {
         private final EditorTab tab;
         private final JLabel label = new JLabel();
         private final JButton close = new JButton("\u00d7");
-        private final Color defaultForeground;
 
         TabHeader(EditorTab tab) {
             super(new BorderLayout(GAP, 0));
@@ -131,7 +137,6 @@ public class EditorTabs extends JTabbedPane {
             setBorder(BorderFactory.createEmptyBorder(3, 6, 3, 2));
 
             label.setBorder(BorderFactory.createEmptyBorder());
-            defaultForeground = label.getForeground();
             add(label, BorderLayout.CENTER);
 
             close.setFont(close.getFont().deriveFont(13f));
@@ -200,7 +205,10 @@ public class EditorTabs extends JTabbedPane {
             label.setToolTipText(tab.file() == null
                     ? Msg.TAB_UNSAVED_SCRIPT.text()
                     : tab.file().getAbsolutePath());
-            label.setForeground(tab.isDirty() ? Theme.WARNING : defaultForeground);
+            // Read from the palette every time rather than remembered once: a tab
+            // title that kept the colour it was created with was invisible after a
+            // switch to the light palette.
+            label.setForeground(tab.isDirty() ? Theme.WARNING : Theme.WINDOW_FOREGROUND);
             setToolTipText(tab.shellKind().description());
             revalidate();
         }

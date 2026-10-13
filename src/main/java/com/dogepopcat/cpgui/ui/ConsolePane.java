@@ -15,7 +15,9 @@ import javax.swing.JTextPane;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
+import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
+import javax.swing.text.Element;
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
@@ -178,7 +180,55 @@ public class ConsolePane extends JPanel {
         installHistoryKeys();
         setPalette(Theme.CONSOLE_BACKGROUND, Theme.CONSOLE_FOREGROUND);
         setBackground(Theme.CONSOLE_BACKGROUND);
+        recolourOutput();
         repaint();
+    }
+
+    /**
+     * Moves the output already on screen onto the new palette.
+     *
+     * <p>Every line is stored with its colour as a character attribute, which no
+     * component walk reaches, so the text kept the colours it was written in. In
+     * the light palette that left near white output on a white background, which
+     * is what "the style was not applied" looked like here. The colours written are
+     * the palette's own, so each one can be mapped to what replaced it; anything
+     * else, such as a colour chosen with the {@code color} command, is left
+     * alone.</p>
+     */
+    private void recolourOutput() {
+        StyledDocument document = text.getStyledDocument();
+        List<int[]> ranges = new ArrayList<>();
+        List<Color> colours = new ArrayList<>();
+        collectRuns(document.getDefaultRootElement(), ranges, colours);
+        for (int i = 0; i < ranges.size(); i++) {
+            int[] range = ranges.get(i);
+            SimpleAttributeSet replacement = new SimpleAttributeSet();
+            StyleConstants.setForeground(replacement, colours.get(i));
+            document.setCharacterAttributes(range[0], range[1], replacement, false);
+        }
+    }
+
+    /**
+     * Collects the runs to change before any of them is changed.
+     *
+     * <p>Setting attributes rewrites the element structure the walk is reading, so
+     * the ranges are gathered first and applied afterwards.</p>
+     */
+    private void collectRuns(Element element, List<int[]> ranges, List<Color> colours) {
+        if (element.getElementCount() == 0) {
+            AttributeSet attributes = element.getAttributes();
+            Color current = StyleConstants.getForeground(attributes);
+            Color mapped = Theme.remap(current);
+            if (current != null && mapped != null && !mapped.equals(current)) {
+                ranges.add(new int[]{element.getStartOffset(),
+                        element.getEndOffset() - element.getStartOffset()});
+                colours.add(mapped);
+            }
+            return;
+        }
+        for (int i = 0; i < element.getElementCount(); i++) {
+            collectRuns(element.getElement(i), ranges, colours);
+        }
     }
 
     /** Re-applies the localized text after a language change. */

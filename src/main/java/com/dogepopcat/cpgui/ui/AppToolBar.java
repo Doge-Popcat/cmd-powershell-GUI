@@ -109,6 +109,10 @@ public class AppToolBar extends JToolBar {
                 BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.tint(Theme.GUTTER_BACKGROUND, 40)),
                 BorderFactory.createEmptyBorder(4, 6, 4, 6)));
         interpreterLabel.setForeground(Theme.WINDOW_FOREGROUND);
+        // The interpreter picker belongs here, with the rest of the palette: it
+        // was styled by the language refresh only, so it kept the dark field on
+        // the light tool bar.
+        styleInterpreter();
         for (Component component : getComponents()) {
             if (component instanceof JButton button) {
                 button.setBackground(Theme.BUTTON_BACKGROUND);
@@ -123,14 +127,17 @@ public class AppToolBar extends JToolBar {
         repaint();
     }
 
+    /** Colours the interpreter picker for the palette in use. */
+    private void styleInterpreter() {
+        interpreter.setBackground(Theme.isDark() ? Theme.EDITOR_BACKGROUND : java.awt.Color.WHITE);
+        interpreter.setForeground(Theme.WINDOW_FOREGROUND);
+    }
+
     /** Re-applies the labels after a language change. */
     private void refreshText() {
         interpreterLabel.setText(Msg.TOOLBAR_INTERPRETER.text());
-        interpreterLabel.setForeground(Theme.WINDOW_FOREGROUND);
         interpreter.setToolTipText(Msg.TOOLBAR_INTERPRETER_TIP.text());
-
-        interpreter.setBackground(Theme.isDark() ? Theme.EDITOR_BACKGROUND : java.awt.Color.WHITE);
-        interpreter.setForeground(Theme.WINDOW_FOREGROUND);
+        styleInterpreter();
     }
 
     /**

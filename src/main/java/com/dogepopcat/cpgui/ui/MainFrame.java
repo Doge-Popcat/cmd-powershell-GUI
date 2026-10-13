@@ -656,6 +656,7 @@ public class MainFrame extends JFrame {
         console.applyTheme();
         problems.applyTheme();
         explorer.applyTheme();
+        editorTabs.applyTheme();
         for (EditorTab tab : editorTabs.tabs()) {
             tab.applyTheme();
         }
@@ -1807,8 +1808,11 @@ public class MainFrame extends JFrame {
             String summary = success
                     ? Msg.RUN_FINISHED.format(tab.shellKind().displayName(), exitCode)
                     : Msg.RUN_FAILED.format(tab.shellKind().displayName(), exitCode);
+            // The console keeps its dark background in both palettes, so a failure
+            // is written in the console's own red rather than the one the light
+            // palette uses on light backgrounds.
             console.append(summary + System.lineSeparator(),
-                    success ? Theme.CONSOLE_INFO : Theme.ERROR);
+                    success ? Theme.CONSOLE_INFO : Theme.CONSOLE_STDERR);
             SwingUtilities.invokeLater(() -> {
                 statusBar.setMessage(success
                         ? Msg.STATUS_FINISHED.format(exitCode)

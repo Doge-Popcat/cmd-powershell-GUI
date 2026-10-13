@@ -130,6 +130,12 @@ public class EditorTab extends JPanel {
         scroll.setBackground(Theme.EDITOR_BACKGROUND);
         setBackground(Theme.WINDOW_BACKGROUND);
         highlighter.restyle();
+        // Refreshing the look and feel installs a new highlighter on the text
+        // component, which drops everything that was drawn with the old one: the
+        // diagnostic underlines and the line marks vanish from the screen. Both
+        // are put back, which also moves them onto the new palette.
+        diagnostics.refresh();
+        applyLineResults();
         repaint();
     }
 
@@ -495,9 +501,12 @@ public class EditorTab extends JPanel {
             int start = element.getStartOffset();
             int end = Math.max(start, element.getEndOffset() - 1);
             try {
+                // The colour is resolved while the mark is painted, so marks made
+                // before a palette change follow it instead of keeping the shade
+                // of the palette they were made in.
                 lineHighlights.add(highlighter.addHighlight(start, end,
                         new LineStatusPainter(success
-                                ? Theme.LINE_SUCCESS : Theme.LINE_FAILURE)));
+                                ? () -> Theme.LINE_SUCCESS : () -> Theme.LINE_FAILURE)));
             } catch (javax.swing.text.BadLocationException ignored) {
                 // The document changed under us; the next run will catch up.
             }

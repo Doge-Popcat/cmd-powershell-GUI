@@ -39,9 +39,12 @@ public final class DiagnosticsOverlay implements DocumentListener {
         this.tab = tab;
         this.debounce = new Timer(DEBOUNCE_MS, e -> run());
         this.debounce.setRepeats(false);
-        painters.put(Severity.DANGER, new SquigglePainter(Theme.ERROR));
-        painters.put(Severity.WARNING, new SquigglePainter(Theme.WARNING));
-        painters.put(Severity.INFO, new SquigglePainter(Theme.CONSOLE_INFO));
+        // The colours are asked for while painting, not captured here: an
+        // underline that is already on screen has to follow a palette change, and
+        // the pale colours of the dark palette are close to invisible on white.
+        painters.put(Severity.DANGER, new SquigglePainter(() -> Theme.ERROR));
+        painters.put(Severity.WARNING, new SquigglePainter(() -> Theme.WARNING));
+        painters.put(Severity.INFO, new SquigglePainter(() -> Theme.CONSOLE_INFO));
         tab.document().addDocumentListener(this);
         run();
     }

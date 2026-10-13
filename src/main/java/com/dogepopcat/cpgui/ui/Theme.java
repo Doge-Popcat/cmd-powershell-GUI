@@ -149,10 +149,27 @@ public final class Theme {
 
     private static final List<Runnable> LISTENERS = new ArrayList<>();
 
+    /**
+     * Which colour replaced which during the last switch.
+     *
+     * <p>Text that has already been written carries its colour as a character
+     * attribute, so no component walk reaches it. The colours are the palette's
+     * own, so they can be looked up and moved to their replacements.</p>
+     */
+    private static final java.util.Map<Color, Color> REPLACED = new java.util.HashMap<>();
+
     private static Mode mode = Mode.DARK;
 
     static {
-        apply(Mode.DARK);
+        // The palette has to exist before the first component is built, but the
+        // notifying half of apply() must not run from here. This block holds the
+        // class initialisation lock, and apply() waits on the event thread; the
+        // moment that thread touches a Theme field - which is what running any
+        // listener amounts to - it waits for this lock and the two wait for each
+        // other forever. Nothing is listening during class initialisation, so the
+        // colours and the look and feel defaults are the whole job.
+        darkPalette();
+        installUIDefaults(true);
     }
 
     private Theme() {
@@ -175,12 +192,14 @@ public final class Theme {
             systemLight = null;
         }
         boolean dark = isDark();
+        List<Color> before = paletteColours();
         if (dark) {
             darkPalette();
         } else {
             lightPalette();
         }
         installUIDefaults(dark);
+        rememberReplacement(before, paletteColours());
         // Components may only be touched on the event thread.
         Runnable notify = () -> {
             for (Runnable listener : List.copyOf(LISTENERS)) {
@@ -198,6 +217,54 @@ public final class Theme {
                 throw new IllegalStateException("Could not apply the theme", e.getCause());
             }
         }
+    }
+
+    /**
+     * @param colour a colour read from the palette at an earlier time
+     * @return the colour that replaced it in the current palette, or the colour
+     *         itself when it is not one of the palette's own (an ANSI colour
+     *         chosen with {@code color}, for example)
+     */
+    public static Color remap(Color colour) {
+        if (colour == null) {
+            return null;
+        }
+        Color replaced = REPLACED.get(colour);
+        return replaced == null ? colour : replaced;
+    }
+
+    /** Records which colour replaced which, for {@link #remap(Color)}. */
+    private static void rememberReplacement(List<Color> before, List<Color> after) {
+        REPLACED.clear();
+        for (int i = 0; i < Math.min(before.size(), after.size()); i++) {
+            Color was = before.get(i);
+            Color now = after.get(i);
+            if (was != null && now != null && !was.equals(now)) {
+                REPLACED.put(was, now);
+            }
+        }
+    }
+
+    /**
+     * @return every palette colour, in a fixed order, so the same position in two
+     *         readings is the same role and can be paired
+     */
+    private static List<Color> paletteColours() {
+        return List.of(
+                WINDOW_BACKGROUND, WINDOW_FOREGROUND, WINDOW_MUTED,
+                EDITOR_BACKGROUND, EDITOR_FOREGROUND, EDITOR_CARET, EDITOR_SELECTION,
+                CURRENT_LINE, GHOST_TEXT,
+                LINE_LIGHT, LINE_SUCCESS, LINE_FAILURE,
+                GUTTER_BACKGROUND, GUTTER_FOREGROUND, GUTTER_CURRENT,
+                CONSOLE_BACKGROUND, CONSOLE_FOREGROUND, CONSOLE_COMMAND,
+                CONSOLE_STDERR, CONSOLE_INFO, CONSOLE_SYSTEM,
+                BUTTON_BACKGROUND, BUTTON_BORDER, BUTTON_HOVER, BUTTON_ELEVATED,
+                BUTTON_ELEVATED_BORDER, BUTTON_ACTIVE, BUTTON_ACTIVE_TEXT,
+                BUTTON_ADMIN_AVAILABLE, BUTTON_ADMIN_BORDER,
+                SYNTAX_COMMAND, SYNTAX_KEYWORD, SYNTAX_PARAMETER, SYNTAX_SWITCH,
+                SYNTAX_VARIABLE, SYNTAX_STRING, SYNTAX_NUMBER, SYNTAX_OPERATOR,
+                SYNTAX_COMMENT, SYNTAX_LABEL,
+                WARNING, ERROR, OK);
     }
 
     /**
@@ -453,10 +520,10 @@ public final class Theme {
         set("TabbedPane.selected", dark ? new Color(0x4A, 0x4E, 0x52) : Color.WHITE);
         set("TabbedPane.contentAreaColor", dark ? new Color(0x4A, 0x4E, 0x52) : Color.WHITE);
         set("TabbedPane.tabAreaBackground", background);
-        set("TabbedPane.darkShadow", dark ? new Color(0x1E, 0x1F, 0x22) : null);
+        set("TabbedPane.darkShadow", dark ? new Color(0x1E, 0x1F, 0x22) : line);
         set("TabbedPane.light", background);
         set("TabbedPane.highlight", background);
-        set("TabbedPane.shadow", dark ? new Color(0x1E, 0x1F, 0x22) : null);
+        set("TabbedPane.shadow", dark ? new Color(0x1E, 0x1F, 0x22) : line);
         // Buttons sit on the tool bar, so they use the button colour rather than
         // the grey control colour, which looked dingy in the light palette.
         set("Button.background", dark ? control : Color.WHITE);
@@ -502,6 +569,12 @@ public final class Theme {
         set("ToolTip.background", dark ? new Color(0x3C, 0x3F, 0x41) : new Color(0xFF, 0xFF, 0xE1));
         set("ToolTip.foreground", text);
         set("Separator.foreground", dark ? new Color(0x4A, 0x4E, 0x52) : new Color(0xD0, 0xD4, 0xDA));
+        // The line itself is drawn in the foreground, but the background is what
+        // the system look and feel left on the separator, and it stayed white in
+        // the dark palette until it was named here.
+        set("Separator.background", background);
+        set("PopupMenuSeparator.foreground", dark ? new Color(0x4A, 0x4E, 0x52) : new Color(0xD0, 0xD4, 0xDA));
+        set("PopupMenuSeparator.background", background);
         set("Panel.foreground", text);
         // Trees and tables paint their own background wherever there is no cell,
         // which is the empty area below the last row. Without these keys that
@@ -569,9 +642,51 @@ public final class Theme {
     }
 
     private static void set(String key, Object value) {
-        if (value != null) {
-            UIManager.put(key, value);
+        if (value == null) {
+            // A key this palette has no value for must not keep the one the other
+            // palette left there: a component built later reads it and comes out
+            // in the colours of the theme that is no longer in use.
+            UIManager.getDefaults().remove(key);
+            return;
         }
+        UIManager.put(key, uiResource(value));
+    }
+
+    /**
+     * Wraps a default the way a look and feel installs it.
+     *
+     * <p>Swing only replaces a component's colour, font, insets or border with the
+     * new default while the value it currently holds is a {@code UIResource}; a
+     * plain value counts as "the application chose this" and is kept for good.
+     * Installing a palette as plain values therefore froze every colour a
+     * component only ever got from the defaults: after switching dark to light
+     * the panels, labels, scroll bars, menus and separators still carried the dark
+     * ones, which is what "the style was not applied" looks like.</p>
+     *
+     * @param value the value to install
+     * @return the value as a UI resource when it has one, otherwise unchanged
+     */
+    private static Object uiResource(Object value) {
+        if (value instanceof javax.swing.plaf.UIResource) {
+            return value;
+        }
+        if (value instanceof java.awt.Color colour) {
+            return new javax.swing.plaf.ColorUIResource(colour);
+        }
+        if (value instanceof java.awt.Font font) {
+            return new javax.swing.plaf.FontUIResource(font);
+        }
+        if (value instanceof java.awt.Dimension size) {
+            return new javax.swing.plaf.DimensionUIResource(size.width, size.height);
+        }
+        if (value instanceof java.awt.Insets insets) {
+            return new javax.swing.plaf.InsetsUIResource(insets.top, insets.left,
+                    insets.bottom, insets.right);
+        }
+        if (value instanceof javax.swing.border.Border border) {
+            return new javax.swing.plaf.BorderUIResource(border);
+        }
+        return value;
     }
 
     /**

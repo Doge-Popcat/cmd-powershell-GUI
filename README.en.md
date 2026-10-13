@@ -244,8 +244,8 @@ or terminal).
 
 ## Testing
 
-The project ships 20 developer checks under `tools/dev/dev/`, which are not part
-of the distribution; 19 print `RESULT: PASS/FAIL` and `SessionProbe` prints a
+The project ships 21 developer checks under `tools/dev/dev/`, which are not part
+of the distribution; 20 print `RESULT: PASS/FAIL` and `SessionProbe` prints a
 session report. Compile and run them with:
 
 ```powershell
@@ -271,6 +271,7 @@ $javac = "D:\Java\jdk-27\bin\javac.exe"
 | `DangerProbe` / `LintProbe` | The danger rules and the static checks |
 | `ParserProbe` / `FileProbe` | Script parsing and file encoding |
 | `WorkspaceProbe` / `AdminProbe` | The workspace policy; the elevation path (command restoration, the portable-launcher fallback, quoting, the `Start-Process` channel) |
+| `StyleAuditProbe` | Palette coverage: after switching themes it checks every component, text run and highlight for colours left over from the other palette |
 | `FontProbe` / `ThemeProbe` | Font availability and the three palettes with live switching |
 | `FixProbe` | Regressions of defects that were fixed |
 | `SessionProbe` | A real interpreter session (charset, unfinished runs) |
@@ -349,6 +350,15 @@ Conventions:
 * **No build tool**: `javac` and `jar` are enough at this size. `build.ps1` is
   about 120 lines, which avoids pulling the Maven or Gradle ecosystem in to
   compile fewer than fifty source files.
+* **The theme lives in the `UIManager` defaults**: both palettes are written into
+  the look and feel defaults, backed by the palette constants. One trap is worth
+  remembering: those defaults must be wrapped as UI resources
+  (`ColorUIResource`, `FontUIResource`). Swing only replaces a property whose
+  current value *is* a UI resource; a plain value counts as one the application
+  set and is never updated again — which is how the dark palette once stayed on
+  screen in the light theme. `StyleAuditProbe` switches the palette twice and
+  then checks every component, text run and highlight for colours that did not
+  follow.
 
 ---
 

@@ -229,7 +229,7 @@ src/main/java/com/dogepopcat/cpgui/
 
 ## 测试
 
-项目自带 20 个开发者检查，位于 `tools/dev/dev/`（不参与打包）。其中 19 个会打印 `RESULT: PASS/FAIL`，`SessionProbe` 打印会话报告。编译并运行：
+项目自带 21 个开发者检查，位于 `tools/dev/dev/`（不参与打包）。其中 20 个会打印 `RESULT: PASS/FAIL`，`SessionProbe` 打印会话报告。编译并运行：
 
 ```powershell
 $javac = "D:\Java\jdk-27\bin\javac.exe"
@@ -254,6 +254,7 @@ $javac = "D:\Java\jdk-27\bin\javac.exe"
 | `DangerProbe` / `LintProbe` | 危险规则与静态检查 |
 | `ParserProbe` / `FileProbe` | 脚本解析与文件读写编码 |
 | `WorkspaceProbe` / `AdminProbe` | 工作区策略；管理员启动通道（命令还原、免安装版启动器回退、引号传递、`Start-Process` 通道） |
+| `StyleAuditProbe` | 配色应用：切换深浅主题后，逐个组件、每段文字与每条下划线检查有没有留下另一套配色的颜色 |
 | `FontProbe` / `ThemeProbe` | 字体可用性、三套配色与热切换 |
 | `FixProbe` | 已修复缺陷的回归 |
 | `SessionProbe` | 真实解释器会话（字符集、未完成运行） |
@@ -311,6 +312,11 @@ $javac = "D:\Java\jdk-27\bin\javac.exe"
   没有安装 Java 的机器上运行。
 * **不引入构建工具**：项目规模用 `javac` + `jar` 足够，`build.ps1` 约 120 行，
   避免为了编译一个不到 50 个源文件的项目引入 Maven/Gradle 生态。
+* **主题做在 `UIManager` 默认值上**：深浅配色都写进 look and feel 默认值，再补一层
+  自己的调色板常量。一个坑值得记住：默认值必须用 `ColorUIResource`/`FontUIResource`
+  这类 UI 资源包装。Swing 只替换「当前值是 UI 资源」的属性，普通值会被当成「程序自己
+  设的」而**永不更新**——早期就是这样把深色配色永久留在了浅色主题里。`StyleAuditProbe`
+  会切两次主题，逐个组件、每段文字和每条下划线检查有没有颜色没跟上。
 
 ---
 

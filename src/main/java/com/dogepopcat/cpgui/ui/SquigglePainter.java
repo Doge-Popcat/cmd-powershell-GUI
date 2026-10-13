@@ -22,9 +22,18 @@ public final class SquigglePainter extends LayeredHighlighter.LayerPainter {
     private static final int WAVE_PERIOD = 4;
     private static final int WAVE_HEIGHT = 2;
 
-    private final Color colour;
+    private final java.util.function.Supplier<Color> colour;
 
     public SquigglePainter(Color colour) {
+        this(() -> colour);
+    }
+
+    /**
+     * @param colour asked for the colour every time the underline is drawn, so a
+     *               diagnostic already on screen follows a palette change instead
+     *               of keeping the colour it was created with
+     */
+    public SquigglePainter(java.util.function.Supplier<Color> colour) {
         this.colour = colour;
     }
 
@@ -58,7 +67,7 @@ public final class SquigglePainter extends LayeredHighlighter.LayerPainter {
 
     private void drawWave(Graphics g, int x, int baseline, int width) {
         Color previous = g.getColor();
-        g.setColor(colour);
+        g.setColor(colour.get());
         for (int i = 0; i < width; i++) {
             int y = baseline - ((i / (WAVE_PERIOD / 2)) % 2 == 0 ? 0 : WAVE_HEIGHT);
             g.drawLine(x + i, y, x + i, y);
@@ -68,6 +77,6 @@ public final class SquigglePainter extends LayeredHighlighter.LayerPainter {
 
     /** @return the colour this painter draws with. */
     public Color colour() {
-        return colour;
+        return colour.get();
     }
 }

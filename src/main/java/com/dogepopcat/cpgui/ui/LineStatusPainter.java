@@ -19,9 +19,18 @@ import java.awt.Shape;
  */
 public final class LineStatusPainter extends LayeredHighlighter.LayerPainter {
 
-    private final Color colour;
+    private final java.util.function.Supplier<Color> colour;
 
     public LineStatusPainter(Color colour) {
+        this(() -> colour);
+    }
+
+    /**
+     * @param colour asked for the colour every time the wash is drawn, so a line
+     *               already marked follows a palette change instead of keeping the
+     *               colour it was marked with
+     */
+    public LineStatusPainter(java.util.function.Supplier<Color> colour) {
         this.colour = colour;
     }
 
@@ -83,13 +92,13 @@ public final class LineStatusPainter extends LayeredHighlighter.LayerPainter {
             return;
         }
         Color previous = g.getColor();
-        g.setColor(colour);
+        g.setColor(colour.get());
         g.fillRect(area.x, area.y, area.width, area.height);
         g.setColor(previous);
     }
 
     /** @return the colour this painter washes with. */
     public Color colour() {
-        return colour;
+        return colour.get();
     }
 }
