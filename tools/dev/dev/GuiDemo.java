@@ -88,6 +88,7 @@ public final class GuiDemo {
         boolean helpMode = mode.equals("help");
         boolean lightMode = mode.equals("light");
         boolean singleMode = mode.equals("single");
+        boolean saveMode = mode.equals("save");
         String script = powershell ? PS_SCRIPT
                 : typo ? TYPO_SCRIPT
                 : (danger || confirm) ? DANGER_SCRIPT : CMD_SCRIPT;
@@ -150,6 +151,13 @@ public final class GuiDemo {
                 frame.editorTabs().current().markLineResult(1, true);
                 frame.editorTabs().current().markLineResult(2, false);
                 frame.editorTabs().current().moveCaretToLine(3);
+            }
+            if (saveMode) {
+                // Open the real save dialog, through the real code path.
+                javax.swing.Timer timer = new javax.swing.Timer(900,
+                        e -> frame.saveTabAs(frame.editorTabs().current()));
+                timer.setRepeats(false);
+                timer.start();
             }
             if (helpMode) {
                 javax.swing.Timer timer = new javax.swing.Timer(900, e -> frame.showHelp());
