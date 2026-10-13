@@ -17,13 +17,24 @@
 .PARAMETER SkipIcon
     Package with jpackage's default icon.
 
+.PARAMETER Zip
+    Also write dist\CmdPowerShellGUI-<version>-win-x64.zip, the portable archive
+    that is handed to users.
+
+.PARAMETER Installer
+    Also try to build an msi installer. This needs the WiX toolset on the machine;
+    without it jpackage cannot make an installer and the script says so rather
+    than failing, because the portable zip is a complete distribution on its own.
+
 .EXAMPLE
-    .\package.ps1 -Clean
+    .\package.ps1 -Clean -Zip
 #>
 [CmdletBinding()]
 param(
     [switch]$Clean,
-    [switch]$SkipIcon
+    [switch]$SkipIcon,
+    [switch]$Zip,
+    [switch]$Installer
 )
 
 $ErrorActionPreference = 'Stop'
@@ -36,6 +47,7 @@ $toolsDir   = Join-Path $buildDir 'tools'
 $distDir    = Join-Path $root 'dist'
 $iconFile   = Join-Path $buildDir 'cpgui.ico'
 $jarFile    = Join-Path $buildDir 'cpgui.jar'
+$version    = '0.1.0'
 
 function Find-Jdk {
     $candidates = New-Object System.Collections.Generic.List[string]
@@ -99,10 +111,20 @@ if ($Clean -and (Test-Path -LiteralPath $distDir)) {
 New-Item -ItemType Directory -Force -Path $distDir | Out-Null
 
 Write-Host "Packing  : jpackage app-image"
+
+# jpackage copies everything under --input into the application directory, so the
+# jar goes into a staging folder of its own. Pointing --input at build\ shipped
+# the compiled classes, the developer tools and every screenshot and log the
+# checks leave behind, which came to over a hundred files inside the distribution.
+$inputDir = Join-Path $buildDir 'package-input'
+if (Test-Path -LiteralPath $inputDir) { Remove-Item -LiteralPath $inputDir -Recurse -Force }
+New-Item -ItemType Directory -Force -Path $inputDir | Out-Null
+Copy-Item -LiteralPath $jarFile -Destination $inputDir -Force
+
 $jpackageArgs = @(
     '--type', 'app-image',
     '--name', 'CmdPowerShellGUI',
-    '--input', $buildDir,
+    '--input', $inputDir,
     '--main-jar', 'cpgui.jar',
     '--main-class', 'com.dogepopcat.cpgui.Main',
     '--dest', $distDir,
@@ -128,4 +150,66 @@ if (Test-Path -LiteralPath $launcher) {
     Write-Host "    $launcher"
 } else {
     Write-Host "jpackage finished but the launcher was not found." -ForegroundColor Yellow
+    exit 1
+}
+
+# --- portable archive ------------------------------------------------------
+if ($Zip) {
+    $zipFile = Join-Path $distDir ('CmdPowerShellGUI-{0}-win-x64.zip' -f $version)
+    if (Test-Path -LiteralPath $zipFile) { Remove-Item -LiteralPath $zipFile -Force }
+    Write-Host "Archive  : $zipFile"
+    # The folder itself is archived, so extracting gives one clean directory.
+    Compress-Archive -Path (Join-Path $distDir 'CmdPowerShellGUI') -DestinationPath $zipFile `
+        -CompressionLevel Optimal
+    $zipMb = (Get-Item -LiteralPath $zipFile).Length / 1MB
+    Write-Host ("Archive  : OK ({0:N1} MB)" -f $zipMb) -ForegroundColor Green
+}
+
+# --- installer -------------------------------------------------------------
+if ($Installer) {
+    $wix = $null
+    foreach ($base in @("${env:ProgramFiles(x86)}\WiX Toolset v3.11",
+                        "${env:ProgramFiles(x86)}\WiX Toolset v3.14",
+                        "$env:ProgramFiles\WiX Toolset v3.11")) {
+        if (Test-Path -LiteralPath (Join-Path $base 'bin\candle.exe')) { $wix = $base; break }
+    }
+    if (-not $wix) {
+        $candle = Get-Command 'candle.exe' -ErrorAction SilentlyContinue
+        if ($candle) { $wix = Split-Path (Split-Path $candle.Source -Parent) -Parent }
+    }
+    if (-not $wix) {
+        Write-Host ""
+        Write-Host "Installer: skipped, the WiX toolset was not found." -ForegroundColor Yellow
+        Write-Host "           jpackage needs WiX 3.0 or newer to build an msi or an exe."
+        Write-Host "           Install it from https://github.com/wixtoolset/wix3/releases"
+        Write-Host "           and run '.\package.ps1 -Clean -Installer' again."
+        Write-Host "           The portable archive above needs no installer."
+    } else {
+        Write-Host "Installer: jpackage msi (WiX at $wix)"
+        & $jpackage @(
+            '--type', 'msi',
+            '--name', 'CmdPowerShellGUI',
+            '--input', $buildDir,
+            '--main-jar', 'cpgui.jar',
+            '--main-class', 'com.dogepopcat.cpgui.Main',
+            '--dest', $distDir,
+            '--app-version', $version,
+            '--vendor', 'Doge-Popcat',
+            '--description', 'Graphical front end for cmd.exe and powershell.exe',
+            '--copyright', 'MIT licensed',
+            '--win-menu',
+            '--win-shortcut',
+            '--win-dir-chooser',
+            '--add-modules', 'java.base,java.desktop,java.logging,java.prefs,java.xml,jdk.unsupported'
+        ) + $iconArgs
+        if ($LASTEXITCODE -eq 0) {
+            $msi = Get-ChildItem -LiteralPath $distDir -Filter '*.msi' | Select-Object -First 1
+            if ($msi) {
+                Write-Host ("Installer: OK -> {0} ({1:N1} MB)" -f $msi.FullName,
+                        ($msi.Length / 1MB)) -ForegroundColor Green
+            }
+        } else {
+            Write-Host "Installer: jpackage failed with exit code $LASTEXITCODE." -ForegroundColor Yellow
+        }
+    }
 }

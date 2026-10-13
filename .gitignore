@@ -1,9 +1,16 @@
 # Build output
 build/
 out/
-dist/
+# Everything in dist is generated, but the portable archive is published with the
+# source so it can be downloaded and run without building anything. The pattern
+# is dist/* rather than dist/ so the exception below is reachable.
+dist/*
+!dist/CmdPowerShellGUI-*-win-x64.zip
 *.class
 *.jar
+
+# The published archive is the one exception to the jar rule.
+!dist/CmdPowerShellGUI-*.zip
 
 # IDE
 .idea/

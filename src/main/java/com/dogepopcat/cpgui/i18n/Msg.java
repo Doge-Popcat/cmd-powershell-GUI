@@ -122,6 +122,7 @@ public enum Msg {
     STATUS_AWAITING_INPUT("Waiting for input", "\u7b49\u5f85\u8f93\u5165\u4e2d"),
     CONSOLE_AWAITING_INPUT_TIP("Type the answer and press Enter",
             "\u8f93\u5165\u56de\u7b54\u540e\u6309\u56de\u8f66"),
+    MENU_CONSOLE_MODE("Console mode", "\u63a7\u5236\u53f0\u6a21\u5f0f"),
     MODE_CLASSIC("Blocks", "\u5206\u5757"),
     MODE_TERMINAL("Terminal", "\u7ec8\u7aef"),
     MODE_CLASSIC_TIP("A rule between runs; stopping discards the interpreter",

@@ -53,11 +53,8 @@ public final class TerminalModeProbe {
 
         report(frame.consoleMode() == ConsoleMode.CLASSIC,
                 "block mode is the starting mode", frame.consoleMode().label());
-        report(frame.toolBar().consoleModeBox() != null,
-                "the tool bar offers a mode selector", "");
-        report(frame.toolBar().consoleModeBox().getItemCount() == 2,
-                "the selector lists both modes",
-                "items=" + frame.toolBar().consoleModeBox().getItemCount());
+        report(menuOffersBothModes(frame),
+                "the Run menu offers both console modes", "");
 
         // --- terminal mode: a variable survives a stop ---
         SwingUtilities.invokeAndWait(() -> frame.setConsoleMode(ConsoleMode.TERMINAL));
@@ -135,10 +132,36 @@ public final class TerminalModeProbe {
         // The mode selector must follow the palette like everything else.
         SwingUtilities.invokeAndWait(() -> Theme.apply(Theme.Mode.DARK));
         Thread.sleep(500);
-        report(frame.toolBar().consoleModeBox().getForeground() != null
-                        && !frame.toolBar().consoleModeBox().getForeground().equals(Color.BLACK),
-                "the selector follows the palette",
-                String.valueOf(frame.toolBar().consoleModeBox().getForeground()));
+        report(frame.getJMenuBar().getForeground() != null,
+                "the menu bar follows the palette",
+                String.valueOf(frame.getJMenuBar().getForeground()));
+    }
+
+    /** @return whether the menu bar carries a radio entry for every mode. */
+    private static boolean menuOffersBothModes(MainFrame frame) {
+        java.util.List<String> wanted = java.util.Arrays.stream(ConsoleMode.values())
+                .map(ConsoleMode::label).toList();
+        for (java.awt.Component top : frame.getJMenuBar().getComponents()) {
+            if (top instanceof javax.swing.JMenu menu && carries(menu, wanted)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** @return whether a menu, or any submenu of it, lists all the labels. */
+    private static boolean carries(javax.swing.JMenu menu, java.util.List<String> wanted) {
+        java.util.Set<String> found = new java.util.HashSet<>();
+        for (int i = 0; i < menu.getItemCount(); i++) {
+            javax.swing.JMenuItem item = menu.getItem(i);
+            if (item instanceof javax.swing.JRadioButtonMenuItem radio
+                    && radio.getText() != null) {
+                found.add(radio.getText());
+            } else if (item instanceof javax.swing.JMenu sub && carries(sub, wanted)) {
+                return true;
+            }
+        }
+        return found.containsAll(wanted);
     }
 
     private static void repositorySize(MainFrame frame) {

@@ -375,7 +375,8 @@ public class MainFrame extends JFrame {
         }
     }
 
-    private void showAbout() {
+    /** Opens the about box; public so a check can drive it like the menu does. */
+    public void showAbout() {
         JPanel panel = new JPanel(new BorderLayout(12, 0));
         panel.add(new JLabel(new javax.swing.ImageIcon(Icons.appIcon(64))), BorderLayout.WEST);
         String html = "<html><b>" + AppInfo.NAME + "</b> " + AppInfo.VERSION
@@ -429,6 +430,7 @@ public class MainFrame extends JFrame {
         run.addSeparator();
         run.add(item(stopAction));
         run.add(item(restartSessionAction));
+        run.add(createConsoleModeMenu());
         bar.add(run);
 
         JMenu view = menu(Msg.MENU_VIEW, 'V');
@@ -477,6 +479,24 @@ public class MainFrame extends JFrame {
         }
         language.setIcon(null);
         return language;
+    }
+
+    /** Builds the console mode submenu with one radio entry per mode. */
+    private JMenu createConsoleModeMenu() {
+        JMenu modes = menu(Msg.MENU_CONSOLE_MODE, 'M');
+        ButtonGroup group = new ButtonGroup();
+        for (ConsoleMode option : ConsoleMode.values()) {
+            JRadioButtonMenuItem entry = new JRadioButtonMenuItem(option.label());
+            entry.setSelected(consoleMode == option);
+            entry.setToolTipText(option.description());
+            entry.addActionListener(e -> {
+                setConsoleMode(option);
+                entry.setSelected(true);
+            });
+            group.add(entry);
+            modes.add(entry);
+        }
+        return modes;
     }
 
     /** Builds the theme submenu with one radio entry per palette. */

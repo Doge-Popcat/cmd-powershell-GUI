@@ -49,8 +49,6 @@ public class AppToolBar extends JToolBar {
     private final int buttonWidth;
     private JButton adminButton;
     private JToggleButton singleLineToggle;
-    private JComboBox<ConsoleMode> consoleMode;
-    private JLabel modeLabel;
     private boolean syncing;
     private boolean elevated;
 
@@ -80,14 +78,10 @@ public class AppToolBar extends JToolBar {
         add(adminButton);
         add(strut());
 
-        add(Box.createHorizontalGlue());
-        interpreterLabel.setFont(Theme.mono(12));
-        if (modeLabel != null) {
-            modeLabel.setFont(Theme.mono(12));
-        }
+        interpreterLabel.setFont(Theme.mono(11));
         add(interpreterLabel);
-        interpreter.setMaximumSize(new Dimension(160, BUTTON_HEIGHT));
-        interpreter.setPreferredSize(new Dimension(150, BUTTON_HEIGHT));
+        interpreter.setMaximumSize(new Dimension(130, BUTTON_HEIGHT));
+        interpreter.setPreferredSize(new Dimension(112, BUTTON_HEIGHT));
         interpreter.addActionListener(e -> {
             if (!syncing) {
                 frame.setActiveShellKind((ShellKind) interpreter.getSelectedItem());
@@ -95,21 +89,10 @@ public class AppToolBar extends JToolBar {
         });
         add(interpreter);
 
-        add(strut());
-        modeLabel = new JLabel();
-        modeLabel.setFont(Theme.mono(12));
-        add(modeLabel);
-        consoleMode = new JComboBox<>(ConsoleMode.values());
-        consoleMode.setFont(Theme.mono(12));
-        consoleMode.setFocusable(false);
-        consoleMode.setMaximumSize(new Dimension(150, BUTTON_HEIGHT));
-        consoleMode.setPreferredSize(new Dimension(110, BUTTON_HEIGHT));
-        consoleMode.addActionListener(e -> {
-            if (!syncing && consoleMode.getSelectedItem() instanceof ConsoleMode mode) {
-                frame.setConsoleMode(mode);
-            }
-        });
-        add(consoleMode);
+        // The console mode lives in the Run menu rather than here: the tool bar
+        // already carries ten buttons and the interpreter selector, and the mode
+        // selector was pushed off the right hand edge on a default sized window.
+        add(Box.createHorizontalGlue());
 
         Messages.addListener(language -> refreshText());
         Theme.addListener(this::applyTheme);
@@ -117,11 +100,6 @@ public class AppToolBar extends JToolBar {
         // and feel defaults are light whatever the chosen theme is.
         applyTheme();
         refreshText();
-    }
-
-    /** @return the console mode selector, exposed for tests. */
-    public JComboBox<ConsoleMode> consoleModeBox() {
-        return consoleMode;
     }
 
     /** Re-applies the palette to every button after a theme change. */
@@ -150,16 +128,7 @@ public class AppToolBar extends JToolBar {
         interpreterLabel.setText(Msg.TOOLBAR_INTERPRETER.text());
         interpreterLabel.setForeground(Theme.WINDOW_FOREGROUND);
         interpreter.setToolTipText(Msg.TOOLBAR_INTERPRETER_TIP.text());
-        if (modeLabel != null) {
-            modeLabel.setText(Msg.TOOLBAR_MODE.text());
-            modeLabel.setForeground(Theme.WINDOW_FOREGROUND);
-        }
-        if (consoleMode != null) {
-            consoleMode.setToolTipText(consoleMode.getSelectedItem() instanceof ConsoleMode mode
-                    ? mode.description() : "");
-            consoleMode.setBackground(Theme.isDark() ? Theme.EDITOR_BACKGROUND : java.awt.Color.WHITE);
-            consoleMode.setForeground(Theme.WINDOW_FOREGROUND);
-        }
+
         interpreter.setBackground(Theme.isDark() ? Theme.EDITOR_BACKGROUND : java.awt.Color.WHITE);
         interpreter.setForeground(Theme.WINDOW_FOREGROUND);
     }
@@ -170,12 +139,9 @@ public class AppToolBar extends JToolBar {
      */
     public void restyleFonts() {
         for (Component component : getComponents()) {
-            component.setFont(Theme.mono(12));
+            component.setFont(Theme.mono(11));
         }
-        interpreterLabel.setFont(Theme.mono(12));
-        if (modeLabel != null) {
-            modeLabel.setFont(Theme.mono(12));
-        }
+        interpreterLabel.setFont(Theme.mono(11));
     }
 
     /**
@@ -183,7 +149,7 @@ public class AppToolBar extends JToolBar {
      * long label cannot stretch the whole bar.
      */
     private int measureButtonWidth(MainFrame frame) {
-        FontMetrics metrics = getFontMetrics(Theme.mono(12));
+        FontMetrics metrics = getFontMetrics(Theme.mono(11));
         int widest = 0;
         for (Action action : new Action[]{
                 frame.newTabAction(), frame.openAction(), frame.saveAction(),
@@ -205,7 +171,7 @@ public class AppToolBar extends JToolBar {
     private JToggleButton singleLineToggle(MainFrame frame) {
         JToggleButton toggle = new JToggleButton(frame.singleLineAction());
         toggle.setFocusable(false);
-        toggle.setFont(Theme.mono(12));
+        toggle.setFont(Theme.mono(11));
         toggle.setMargin(new Insets(0, 0, 0, 0));
         toggle.setPreferredSize(new Dimension(buttonWidth, BUTTON_HEIGHT));
         toggle.setMinimumSize(new Dimension(buttonWidth, BUTTON_HEIGHT));
@@ -237,6 +203,13 @@ public class AppToolBar extends JToolBar {
         return Box.createHorizontalStrut(GAP);
     }
 
+    /** A raised edge with tighter padding than the default, for the tool bar. */
+    private static javax.swing.border.Border compactEdge() {
+        return javax.swing.BorderFactory.createCompoundBorder(
+                javax.swing.BorderFactory.createRaisedBevelBorder(),
+                javax.swing.BorderFactory.createEmptyBorder(2, 5, 2, 5));
+    }
+
     private JButton button(Action action, String label) {
         JButton button = button(action);
         button.setText(label);
@@ -246,14 +219,14 @@ public class AppToolBar extends JToolBar {
     private JButton button(Action action) {
         JButton button = new JButton(action);
         button.setFocusable(false);
-        button.setFont(Theme.mono(12));
+        button.setFont(Theme.mono(11));
         button.setHorizontalAlignment(SwingConstants.CENTER);
         button.setMargin(new Insets(0, 0, 0, 0));
         button.setPreferredSize(new Dimension(buttonWidth, BUTTON_HEIGHT));
         button.setMinimumSize(new Dimension(buttonWidth, BUTTON_HEIGHT));
         button.setMaximumSize(new Dimension(buttonWidth, BUTTON_HEIGHT));
         // A visible edge is what makes the buttons read as separate controls.
-        button.setBorder(Theme.raisedBorder());
+        button.setBorder(compactEdge());
         button.setBackground(Theme.BUTTON_BACKGROUND);
         button.setForeground(Theme.WINDOW_FOREGROUND);
         button.setOpaque(true);

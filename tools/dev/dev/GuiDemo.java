@@ -100,7 +100,12 @@ public final class GuiDemo {
                 : script;
 
         SwingUtilities.invokeLater(() -> {
-            MainFrame frame = new MainFrame();
+            // Start exactly as the application does. Without this the demo runs the
+// cross-platform look and feel, which lays out differently and made every
+// screenshot unrepresentative of what a user sees.
+        com.dogepopcat.cpgui.Main.applyLookAndFeel();
+
+        MainFrame frame = new MainFrame();
             frame.setVisible(true);
             if (powershell || complete) {
                 frame.setActiveShellKind(ShellKind.POWERSHELL);
