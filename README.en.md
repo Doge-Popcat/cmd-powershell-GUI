@@ -106,7 +106,7 @@ highlighting, completion, diagnostics), and press **Run** to hand them to a real
 | **Workspace switching** | Pick a directory graphically, equivalent to `cd /d`, applied to every open session and to the file tree |
 | **File explorer** | A tree on the left that expands on demand; double click a file to open it or a folder to expand it; right click to create, delete or use as the working directory |
 | **Syntax reference** | `F1` opens a searchable list of commands and their parameters, runs `/?` or `Get-Help` in the console on request, and links the official documentation in English and Chinese |
-| **Administrator mode** | Restarts elevated in one click, handling quoting, the unsaved-changes prompt and a refused UAC prompt |
+| **Administrator mode** | Opens a second, elevated window in one click — the portable image included; the launch command is restored, quoting is handled, and a failure shows the reason Windows gave |
 | **File handling** | New, open and save `.cmd`, `.bat` and `.ps1`, with a prompt when closing unsaved work |
 | **Chinese and English** | The interface follows the system language and can be switched at run time from View → Language; command descriptions are bilingual too |
 | **Dark and light themes** | Dark by default, with light and follow-the-system options under View → Theme, and depth on the buttons |
@@ -163,6 +163,23 @@ Two things to know:
 * **Close any running copy first**, otherwise `build\cpgui.jar` is locked and the
   packaging step fails.
 
+### Diagnosing administrator mode
+
+The portable image has no console, so a failure leaves no message behind. Have it
+write a report of this start instead:
+
+```powershell
+dist\CmdPowerShellGUI\CmdPowerShellGUI.exe --elevation-report report.txt
+type report.txt
+```
+
+`relaunch executable` is the program the **Administrator** action will start, and
+`relaunch executable exists` must be `true`. In the portable image
+`java.home/java.exe` is **always `false`**: jpackage builds its runtime with
+`jlink --strip-native-commands`, so there is no `java.exe` in it — only the
+launcher the image ships. Earlier builds tried to start that missing `java.exe`,
+which is exactly why administrator mode would not open from the archive.
+
 ---
 
 ## Shortcuts
@@ -189,7 +206,7 @@ Two things to know:
 
 ```
 src/main/java/com/dogepopcat/cpgui/
-├── Main.java                    entry point: sets the look and feel, parses --workspace
+├── Main.java                    entry point: look and feel, --workspace, --elevation-report
 ├── AppInfo.java                 name and version
 ├── analysis/                    static analysis
 │   ├── ScriptParser.java        splits a script into lines, spots comments, keeps exact offsets
@@ -253,7 +270,7 @@ $javac = "D:\Java\jdk-27\bin\javac.exe"
 | `UndoProbe` | Undo and redo staying clean of highlighter edits |
 | `DangerProbe` / `LintProbe` | The danger rules and the static checks |
 | `ParserProbe` / `FileProbe` | Script parsing and file encoding |
-| `WorkspaceProbe` / `AdminProbe` | The workspace policy and the elevation path |
+| `WorkspaceProbe` / `AdminProbe` | The workspace policy; the elevation path (command restoration, the portable-launcher fallback, quoting, the `Start-Process` channel) |
 | `FontProbe` / `ThemeProbe` | Font availability and the three palettes with live switching |
 | `FixProbe` | Regressions of defects that were fixed |
 | `SessionProbe` | A real interpreter session (charset, unfinished runs) |
@@ -316,8 +333,10 @@ Conventions:
   closing marker may be read as the second answer.
 * The console is a **single continuous stream**; there are no split panes.
 * Windows only. `cmd.exe` and `powershell.exe` are hard dependencies.
-* Administrator mode is verified only up to the UAC prompt (quote restoration,
-  environment passing and the `Start-Process` channel).
+* Administrator mode does not verify the UAC prompt itself (no automation can click
+  Yes); everything else — command restoration, the portable-launcher fallback,
+  quoting, the `Start-Process` channel and the workspace handed over — is covered by
+  `AdminProbe` and `--elevation-report`.
 
 ---
 

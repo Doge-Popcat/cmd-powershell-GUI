@@ -301,10 +301,11 @@ public enum Msg {
             "Windows \u4f1a\u8be2\u95ee\u662f\u5426\u5141\u8bb8\u518d\u5f00\u4e00\u4e2a\u62e5\u6709\u7ba1\u7406\u5458\u6743\u9650\u7684\u7a97\u53e3\u3002\n\n"
                     + "\u672c\u7a97\u53e3\u4f1a\u7ee7\u7eed\u4fdd\u7559\u3002\u65b0\u7a97\u53e3\u5c06\u4ee5 %s \u4e3a\u5de5\u4f5c\u76ee\u5f55\uff0c"
                     + "\u5e76\u4e14\u5b83\u7684\u201c\u7ba1\u7406\u5458\u6743\u9650\u201d\u6309\u94ae\u4f1a\u9ad8\u4eae\u3002\n\n\u7ee7\u7eed\uff1f"),
-    DIALOG_ADMIN_REFUSED("The elevated window could not be started.\n\n"
-            + "This usually means the permission prompt was dismissed.",
-            "\u65e0\u6cd5\u542f\u52a8\u7ba1\u7406\u5458\u7a97\u53e3\u3002\n\n"
-                    + "\u901a\u5e38\u662f\u56e0\u4e3a\u6743\u9650\u5f39\u7a97\u88ab\u53d6\u6d88\u4e86\u3002"),
+    DIALOG_ADMIN_REFUSED("The elevated window could not be started.\n\n%s",
+            "\u65e0\u6cd5\u542f\u52a8\u7ba1\u7406\u5458\u7a97\u53e3\u3002\n\n%s"),
+    DIALOG_ADMIN_REFUSED_SILENT("Windows did not say why. The permission prompt was "
+            + "probably dismissed.",
+            "Windows \u6ca1\u6709\u7ed9\u51fa\u539f\u56e0\uff0c\u901a\u5e38\u662f\u6743\u9650\u5f39\u7a97\u88ab\u53d6\u6d88\u4e86\u3002"),
     DIALOG_ADMIN_NO_COMMAND("Could not work out how this program was started, so an "
             + "elevated copy cannot be started.",
             "\u65e0\u6cd5\u786e\u5b9a\u672c\u7a0b\u5e8f\u7684\u542f\u52a8\u65b9\u5f0f\uff0c\u56e0\u6b64\u65e0\u6cd5\u542f\u52a8\u7ba1\u7406\u5458\u526f\u672c\u3002"),

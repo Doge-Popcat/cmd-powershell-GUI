@@ -1660,7 +1660,10 @@ public class MainFrame extends JFrame {
      * Opens a second, elevated window without disturbing this one.
      *
      * <p>Windows cannot raise the integrity level of a running process, so a new
-     * one is started through the {@code runas} verb. The original window is left
+     * one is started through the {@code runas} verb. What is started is whatever
+     * started this program: the JVM for a {@code java -jar} or {@code java -cp}
+     * start, and the launcher executable for the packaged application image,
+     * whose bundled runtime has no {@code java.exe}. The original window is left
      * open: closing it was needlessly destructive and made comparing the two
      * impossible. The new window inherits the current working directory.</p>
      */
@@ -1673,7 +1676,12 @@ public class MainFrame extends JFrame {
         }
 
         List<String> command = com.dogepopcat.cpgui.util.CommandLine.currentProcess();
-        if (command.size() < 2) {
+        // An empty argument string is normal and not a failure: the packaged
+        // application image is a launcher that needs no arguments, because it
+        // carries its own class path and JVM options. What has to exist is the
+        // executable itself.
+        String executable = command.isEmpty() ? "" : command.get(0);
+        if (!new File(executable).isFile()) {
             console.appendError(Msg.DIALOG_ADMIN_NO_COMMAND.text() + System.lineSeparator());
             statusBar.setMessage(Msg.STATUS_ADMIN_UNAVAILABLE.text());
             return;
@@ -1688,9 +1696,9 @@ public class MainFrame extends JFrame {
             return;
         }
 
-        String executable = command.get(0);
-        String arguments = String.join(" ", command.subList(1, command.size()))
-                + " --workspace \"" + workspace.getAbsolutePath() + "\"";
+        String arguments = command.size() >= 2 && !command.get(1).isBlank()
+                ? command.get(1) + " --workspace \"" + workspace.getAbsolutePath() + "\""
+                : "--workspace \"" + workspace.getAbsolutePath() + "\"";
         ProcessBuilder builder = new ProcessBuilder("powershell.exe", "-NoProfile",
                 "-NonInteractive", "-Command",
                 "Start-Process -FilePath $env:CPGUI_ELEVATE_EXE"
@@ -1706,11 +1714,12 @@ public class MainFrame extends JFrame {
                     com.dogepopcat.cpgui.shell.ConsoleCharset.get());
             int exit = process.waitFor();
             if (exit != 0) {
-                console.appendError("The elevated window could not be started: "
-                        + output.strip() + System.lineSeparator());
+                String detail = elevationDetail(executable, output);
+                console.appendError(Msg.DIALOG_ADMIN_REFUSED.format(detail)
+                        .replace('\n', ' ') + System.lineSeparator());
                 statusBar.setMessage(Msg.STATUS_ADMIN_REFUSED.text());
                 JOptionPane.showMessageDialog(this,
-                        Msg.DIALOG_ADMIN_REFUSED.text(),
+                        Msg.DIALOG_ADMIN_REFUSED.format(detail),
                         Msg.DIALOG_ADMIN_TITLE.text(), JOptionPane.WARNING_MESSAGE);
                 return;
             }
@@ -1718,15 +1727,38 @@ public class MainFrame extends JFrame {
             Thread.currentThread().interrupt();
             return;
         } catch (IOException e) {
-            console.appendError(Msg.DIALOG_ADMIN_TITLE.text() + ": " + e.getMessage()
+            String detail = elevationDetail(executable, e.getMessage() == null ? "" : e.getMessage());
+            console.appendError(Msg.DIALOG_ADMIN_REFUSED.format(detail).replace('\n', ' ')
                     + System.lineSeparator());
             statusBar.setMessage(Msg.STATUS_ADMIN_FAILED.text());
+            JOptionPane.showMessageDialog(this,
+                    Msg.DIALOG_ADMIN_REFUSED.format(detail),
+                    Msg.DIALOG_ADMIN_TITLE.text(), JOptionPane.WARNING_MESSAGE);
             return;
         }
 
         console.appendSystem(Msg.STATUS_ELEVATED_KEEPS_RUNNING.text()
                 + System.lineSeparator());
         statusBar.setMessage(Msg.STATUS_ADMIN_STARTED.text());
+    }
+
+    /**
+     * Describes a failed elevation attempt: the program that was asked for,
+     * followed by whatever Windows reported about it.
+     *
+     * <p>The reason is printed by Windows, so it explains a missing file, a
+     * refused prompt or a blocked policy far better than a fixed message can.</p>
+     *
+     * @param executable the program that was about to be started
+     * @param output     the output of the elevation helper, possibly blank
+     * @return the detail shown in the dialog and written to the console
+     */
+    private static String elevationDetail(String executable, String output) {
+        String reason = output == null ? "" : output.strip();
+        if (reason.isEmpty()) {
+            reason = Msg.DIALOG_ADMIN_REFUSED_SILENT.text();
+        }
+        return executable + System.lineSeparator() + System.lineSeparator() + reason;
     }
 
     /**

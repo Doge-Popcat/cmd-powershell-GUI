@@ -95,7 +95,7 @@ WiX 下载：<https://github.com/wixtoolset/wix3/releases>
 | **工作区切换** | 图形化选目录，等价于 `cd /d`，并同步到所有已开启的会话与左侧文件树 |
 | **文件管理器** | 左侧文件树，按需展开目录；双击文件打开、双击目录展开；右键新建 / 删除 / 设为工作目录 |
 | **语法参考** | `F1` 打开：可搜索的命令与参数说明，一键在控制台运行 `/?` 或 `Get-Help`，并可跳转官方文档（中英） |
-| **管理员模式** | 一键以管理员身份重启（自动处理引号、未保存提醒、UAC 被拒绝的提示） |
+| **管理员模式** | 一键再开一个管理员权限的窗口，免安装版同样可用；启动命令自动还原、引号自动处理，失败时弹窗给出 Windows 报出的原因 |
 | **文件操作** | 新建 / 打开 / 保存 `.cmd`、`.bat`、`.ps1`，未保存时关闭会提醒 |
 | **中文 / English** | 界面默认跟随系统语言，可在「视图 → 语言」中即时切换，无需重启；命令说明也已双语化 |
 | **深色 / 浅色主题** | 默认深色，可在「视图 → 主题」切换浅色或跟随系统；按钮带立体边框 |
@@ -153,6 +153,20 @@ run-latest.bat            # 固定使用 D:\Java\jdk-27，并打印 jar 时间�
 * **目标目录已存在时 jpackage 会失败，必须带 `-Clean`。**
 * 打包前**关闭正在运行的程序**，否则 `build\cpgui.jar` 被占用会导致打包失败。
 
+### 管理员模式排错
+
+免安装版没有控制台，管理员模式失败时看不到原因。让程序把这次启动的信息写成一份报告：
+
+```powershell
+dist\CmdPowerShellGUI\CmdPowerShellGUI.exe --elevation-report report.txt
+type report.txt
+```
+
+报告里的 `relaunch executable` 就是按下「管理员权限」后会启动的程序，`relaunch executable exists`
+必须是 `true`。免安装版的 `java.home/java.exe` **一定是 `false`**：jpackage 的运行时用
+`jlink --strip-native-commands` 生成，不带 `java.exe`，只认它自己的启动器——早期版本正是
+去启动那个并不存在的 `java.exe`，才导致免安装版的管理员模式打不开。
+
 ---
 
 ## 快捷键
@@ -179,7 +193,7 @@ run-latest.bat            # 固定使用 D:\Java\jdk-27，并打印 jar 时间�
 
 ```
 src/main/java/com/dogepopcat/cpgui/
-├── Main.java                    入口：设置外观、解析 --workspace
+├── Main.java                    入口：设置外观、解析 --workspace 与 --elevation-report
 ├── AppInfo.java                 名称与版本
 ├── analysis/                    静态分析
 │   ├── ScriptParser.java        按行切分脚本，注释识别，精确偏移
@@ -239,7 +253,7 @@ $javac = "D:\Java\jdk-27\bin\javac.exe"
 | `UndoProbe` | 撤销 / 重做不受高亮污染 |
 | `DangerProbe` / `LintProbe` | 危险规则与静态检查 |
 | `ParserProbe` / `FileProbe` | 脚本解析与文件读写编码 |
-| `WorkspaceProbe` / `AdminProbe` | 工作区策略、管理员启动通道 |
+| `WorkspaceProbe` / `AdminProbe` | 工作区策略；管理员启动通道（命令还原、免安装版启动器回退、引号传递、`Start-Process` 通道） |
 | `FontProbe` / `ThemeProbe` | 字体可用性、三套配色与热切换 |
 | `FixProbe` | 已修复缺陷的回归 |
 | `SessionProbe` | 真实解释器会话（字符集、未完成运行） |
@@ -284,7 +298,9 @@ $javac = "D:\Java\jdk-27\bin\javac.exe"
   需要连续多次回答的命令，补发的收尾标记可能被第二个问题读走。
 * 控制台是**单一连续输出**，没有多窗格分栏。
 * 只支持 Windows；`cmd.exe` 与 `powershell.exe` 是硬依赖。
-* 管理员模式只验证到 UAC 弹窗之前（命令还原、环境变量传递、`Start-Process` 通道可用）。
+* 管理员模式不验证 UAC 弹窗本身（自动化无法点击「是」）；此外的链路——启动命令还原、
+  免安装版启动器回退、引号传递、`Start-Process` 通道、传入的工作目录——都由 `AdminProbe`
+  和 `--elevation-report` 覆盖。
 
 ---
 
