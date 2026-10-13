@@ -56,6 +56,10 @@ public class ConsolePane extends JPanel {
 
     private java.util.function.Consumer<String> inputHandler = command -> { };
     private int historyIndex;
+    /** The text being typed when the user started looking through the history. */
+    private String draft = "";
+    /** True while the history is writing the field, so listeners stand aside. */
+    private boolean recalling;
 
     private record Segment(String text, Color color) {
     }
@@ -167,18 +171,42 @@ public class ConsolePane extends JPanel {
         }
         history.add(command);
         historyIndex = history.size();
+        draft = "";
         input.setText("");
         startBlock();
         inputHandler.accept(command);
     }
 
-    /** Moves through the entered commands, newest first. */
+    /**
+     * Moves through the entered commands, newest first.
+     *
+     * <p>Stepping past the newest entry restores whatever was being typed, so a
+     * half-written command is not lost by looking something up. Nothing else may
+     * reset the position, otherwise the second Up press would start from the
+     * newest command again and only the last one would ever be reachable.</p>
+     */
     private void recall(int delta) {
         if (history.isEmpty()) {
             return;
         }
-        historyIndex = Math.max(0, Math.min(history.size(), historyIndex + delta));
-        input.setText(historyIndex >= history.size() ? "" : history.get(historyIndex));
+        if (recalling) {
+            return;
+        }
+        if (historyIndex >= history.size()) {
+            // Remember the draft the first time the user walks away from it.
+            draft = input.getText();
+        }
+        recalling = true;
+        try {
+            historyIndex = Math.max(0, Math.min(history.size(), historyIndex + delta));
+            String recalled = historyIndex >= history.size()
+                    ? (draft == null ? "" : draft)
+                    : history.get(historyIndex);
+            input.setText(recalled);
+            input.setCaretPosition(input.getText().length());
+        } finally {
+            recalling = false;
+        }
     }
 
     /**
@@ -222,6 +250,11 @@ public class ConsolePane extends JPanel {
     /** Moves focus to the console input line. */
     public void focusInput() {
         input.requestFocusInWindow();
+    }
+
+    /** @return how many commands the history holds, exposed for tests. */
+    public int historySize() {
+        return history.size();
     }
 
     /** @return the console input field, exposed for tests. */

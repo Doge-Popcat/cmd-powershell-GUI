@@ -1749,6 +1749,16 @@ public class MainFrame extends JFrame {
         return singleLineAction;
     }
 
+    /** @return the undo action, shared with the tool bar. */
+    public Action undoAction() {
+        return undoAction;
+    }
+
+    /** @return the redo action, shared with the tool bar. */
+    public Action redoAction() {
+        return redoAction;
+    }
+
     public Action adminAction() {
         return adminAction;
     }

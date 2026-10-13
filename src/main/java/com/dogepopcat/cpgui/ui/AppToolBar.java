@@ -42,6 +42,10 @@ public class AppToolBar extends JToolBar {
 
     private final JComboBox<ShellKind> interpreter = new JComboBox<>(ShellKind.values());
     private final JLabel interpreterLabel = new JLabel();
+    /** Undo and redo read better as arrows than as words in a narrow button. */
+    private static final String UNDO_GLYPH = "\u21B6";
+    private static final String REDO_GLYPH = "\u21B7";
+
     private final int buttonWidth;
     private JButton adminButton;
     private JToggleButton singleLineToggle;
@@ -61,6 +65,8 @@ public class AppToolBar extends JToolBar {
         add(button(frame.newTabAction()));
         add(button(frame.openAction()));
         add(button(frame.saveAction()));
+        add(button(frame.undoAction(), UNDO_GLYPH + " " + Msg.TOOLBAR_UNDO.text()));
+        add(button(frame.redoAction(), REDO_GLYPH + " " + Msg.TOOLBAR_REDO.text()));
         add(strut());
         add(button(frame.runAction()));
         add(singleLineToggle(frame));
@@ -188,6 +194,12 @@ public class AppToolBar extends JToolBar {
 
     private Component strut() {
         return Box.createHorizontalStrut(GAP);
+    }
+
+    private JButton button(Action action, String label) {
+        JButton button = button(action);
+        button.setText(label);
+        return button;
     }
 
     private JButton button(Action action) {

@@ -117,6 +117,8 @@ public enum Msg {
             "\u6d4f\u89c8\u547d\u4ee4\u5e76\u6253\u5f00\u5b98\u65b9\u6587\u6863"),
 
     // --- tool bar and location bar ----------------------------------------
+    TOOLBAR_UNDO("Undo", "\u64a4\u9500"),
+    TOOLBAR_REDO("Redo", "\u91cd\u505a"),
     TOOLBAR_INTERPRETER("Interpreter:", "\u89e3\u91ca\u5668\uff1a"),
     TOOLBAR_INTERPRETER_TIP("Interpreter used by the active tab", "\u5f53\u524d\u6807\u7b7e\u9875\u4f7f\u7528\u7684\u89e3\u91ca\u5668"),
     LOCATION_CAPTION("Working directory:", "\u5de5\u4f5c\u76ee\u5f55\uff1a"),

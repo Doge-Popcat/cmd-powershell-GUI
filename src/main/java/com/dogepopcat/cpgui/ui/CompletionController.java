@@ -176,6 +176,9 @@ public final class CompletionController implements DocumentListener {
 
     private void navigate(int delta) {
         popup.moveSelection(delta);
+        // Keep the inline suggestion in step with the highlighted row, so Tab
+        // inserts exactly what the greyed text is showing.
+        showGhost(popup.selected());
     }
 
     // --- triggering ---------------------------------------------------------
@@ -218,11 +221,16 @@ public final class CompletionController implements DocumentListener {
         }
         if (!manual && items.size() == 1) {
             // One clear answer is shown inline instead of in a list.
+            popup.hide();
             showGhost(items.get(0));
             return;
         }
-        clearGhost();
+        // Both are shown: the list to choose from, and the highlighted entry
+        // inline after the caret. Only ever one of them may be live, otherwise
+        // Tab accepts whatever the list happens to hold rather than what the
+        // greyed text is promising.
         popup.show(pane(), pane().getCaretPosition(), items);
+        showGhost(popup.selected());
     }
 
     private void showGhost(CompletionItem item) {
@@ -233,8 +241,15 @@ public final class CompletionController implements DocumentListener {
         } catch (RuntimeException ignored) {
             // Fall through with an empty prefix.
         }
+        if (item == null) {
+            clearGhost();
+            return;
+        }
         String insertion = item.insertText();
-        if (!insertion.startsWith(typed) || insertion.length() <= typed.length()) {
+        // The comparison ignores case, so typing MK still suggests mkdir; the
+        // completion is an extension of what was typed either way.
+        if (insertion.length() <= typed.length()
+                || !insertion.regionMatches(true, 0, typed, 0, typed.length())) {
             // Path and parameter suggestions are not always a plain extension of
             // what was typed, so they are not shown as ghost text.
             clearGhost();
@@ -280,6 +295,8 @@ public final class CompletionController implements DocumentListener {
      */
     public boolean acceptSuggestion() {
         if (popup.isVisible()) {
+            // The highlighted row wins, and the ghost text mirrors it, so the
+            // two can never disagree.
             accept();
             return true;
         }

@@ -44,7 +44,7 @@ public class EditorTab extends JPanel {
     private final GhostTextPane textPane = new GhostTextPane();
     private final JScrollPane scroll;
     private final LineNumberView gutter;
-    private final UndoManager undo = new UndoManager();
+    private final UndoManager undo = new CodeUndoManager();
     private final SyntaxHighlighter highlighter;
     private final DiagnosticsOverlay diagnostics;
     private final CompletionController completion;
@@ -131,6 +131,75 @@ public class EditorTab extends JPanel {
         setBackground(Theme.WINDOW_BACKGROUND);
         highlighter.restyle();
         repaint();
+    }
+
+    /**
+     * An undo manager that ignores the edits the syntax highlighter makes.
+     *
+     * <p>Recolouring the text changes character attributes, and the document
+     * reports each change as an undoable edit. Those edits filled the stack, so
+     * Ctrl+Z undid a colour change rather than the typing and appeared to do
+     * nothing at all.</p>
+     */
+    private static final class CodeUndoManager extends UndoManager {
+
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public synchronized boolean addEdit(javax.swing.undo.UndoableEdit edit) {
+            // The attribute edit class is not visible outside its package, so it
+            // is recognised by name; it is what setCharacterAttributes adds.
+            if (edit.getClass().getName().endsWith("AttributeUndoableEdit")) {
+                return false;
+            }
+            if (edit instanceof javax.swing.text.AbstractDocument.DefaultDocumentEvent event
+                    && event.getType() == javax.swing.event.DocumentEvent.EventType.CHANGE) {
+                return false;
+            }
+            return super.addEdit(edit);
+        }
+    }
+
+    /**
+     * Forgets the edit history.
+     *
+     * <p>Called after a file is loaded into the tab, so the first Ctrl+Z does
+     * not wipe out everything that was just read from disk.</p>
+     */
+    public void discardUndoHistory() {
+        undo.discardAllEdits();
+    }
+
+    /** @return {@code true} when there is something to undo. */
+    public boolean canUndo() {
+        return undo.canUndo();
+    }
+
+    /** @return {@code true} when there is something to redo. */
+    public boolean canRedo() {
+        return undo.canRedo();
+    }
+
+    /** Undoes one edit, if there is one. */
+    public void undoLastEdit() {
+        try {
+            if (undo.canUndo()) {
+                undo.undo();
+            }
+        } catch (CannotUndoException ignored) {
+            // The stack is out of step; there is nothing sensible to do.
+        }
+    }
+
+    /** Redoes one edit, if there is one. */
+    public void redoLastEdit() {
+        try {
+            if (undo.canRedo()) {
+                undo.redo();
+            }
+        } catch (CannotRedoException ignored) {
+            // Same as above.
+        }
     }
 
     private void installUndoRedo() {
