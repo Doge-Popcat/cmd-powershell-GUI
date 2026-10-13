@@ -57,6 +57,44 @@ public final class Theme {
     public static Color CURRENT_LINE;
     /** Greyed inline suggestion drawn after the caret. */
     public static Color GHOST_TEXT;
+    /** Text colour used inside the file chooser, which is always light. */
+    public static final Color FOREGROUND_ON_LIGHT = new Color(0x1F, 0x23, 0x29);
+
+    /** The defaults the file chooser is built with, so it looks like a system dialog. */
+    private static final java.util.Map<String, Object> LIGHT_CHOOSER_DEFAULTS =
+            java.util.Map.ofEntries(
+                    java.util.Map.entry("Panel.background", new Color(0xF4, 0xF5, 0xF7)),
+                    java.util.Map.entry("Panel.foreground", FOREGROUND_ON_LIGHT),
+                    java.util.Map.entry("Label.foreground", FOREGROUND_ON_LIGHT),
+                    java.util.Map.entry("Label.background", new Color(0xF4, 0xF5, 0xF7)),
+                    java.util.Map.entry("ComboBox.background", java.awt.Color.WHITE),
+                    java.util.Map.entry("ComboBox.foreground", FOREGROUND_ON_LIGHT),
+                    java.util.Map.entry("ComboBox.selectionBackground", new Color(0xCC, 0xE0, 0xF5)),
+                    java.util.Map.entry("ComboBox.selectionForeground", FOREGROUND_ON_LIGHT),
+                    java.util.Map.entry("TextField.background", java.awt.Color.WHITE),
+                    java.util.Map.entry("TextField.foreground", FOREGROUND_ON_LIGHT),
+                    java.util.Map.entry("TextField.caretForeground", FOREGROUND_ON_LIGHT),
+                    java.util.Map.entry("List.background", java.awt.Color.WHITE),
+                    java.util.Map.entry("List.foreground", FOREGROUND_ON_LIGHT),
+                    java.util.Map.entry("List.selectionBackground", new Color(0xCC, 0xE0, 0xF5)),
+                    java.util.Map.entry("List.selectionForeground", FOREGROUND_ON_LIGHT),
+                    java.util.Map.entry("Table.background", java.awt.Color.WHITE),
+                    java.util.Map.entry("Table.foreground", FOREGROUND_ON_LIGHT),
+                    java.util.Map.entry("Table.gridColor", new Color(0xD0, 0xD4, 0xDA)),
+                    java.util.Map.entry("Table.selectionBackground", new Color(0xCC, 0xE0, 0xF5)),
+                    java.util.Map.entry("Table.selectionForeground", FOREGROUND_ON_LIGHT),
+                    java.util.Map.entry("TableHeader.background", new Color(0xE8, 0xEA, 0xED)),
+                    java.util.Map.entry("TableHeader.foreground", FOREGROUND_ON_LIGHT),
+                    java.util.Map.entry("Button.background", new Color(0xF0, 0xF0, 0xF0)),
+                    java.util.Map.entry("Button.foreground", FOREGROUND_ON_LIGHT),
+                    java.util.Map.entry("Viewport.background", java.awt.Color.WHITE),
+                    java.util.Map.entry("ScrollPane.background", new Color(0xF4, 0xF5, 0xF7)),
+                    java.util.Map.entry("ScrollBar.background", new Color(0xF0, 0xF0, 0xF0)),
+                    java.util.Map.entry("ScrollBar.thumb", new Color(0xB4, 0xB9, 0xC0)),
+                    java.util.Map.entry("ScrollBar.track", new Color(0xE8, 0xEA, 0xED)),
+                    java.util.Map.entry("Tree.background", java.awt.Color.WHITE),
+                    java.util.Map.entry("Tree.foreground", FOREGROUND_ON_LIGHT));
+
     /** Border colour for a visible edge. Darker in the light palette. */
     public static Color LINE_LIGHT;
     /** Wash behind a line that single line mode ran successfully. */
@@ -385,6 +423,7 @@ public final class Theme {
         set("OptionPaneUI", "javax.swing.plaf.basic.BasicOptionPaneUI");
 
 
+
         set("ToolBarUI", "javax.swing.plaf.basic.BasicToolBarUI");
         set("ListUI", "javax.swing.plaf.basic.BasicListUI");
         set("TreeUI", "javax.swing.plaf.basic.BasicTreeUI");
@@ -547,11 +586,38 @@ public final class Theme {
     public static void styleChooser(javax.swing.JFileChooser chooser) {
         // The chooser builds its own components, so the look and feel is asked to
         // rebuild them against the current defaults before anything is coloured.
-        javax.swing.SwingUtilities.updateComponentTreeUI(chooser);
-        Color field = isDark() ? EDITOR_BACKGROUND : java.awt.Color.WHITE;
-        Color chrome = isDark() ? WINDOW_BACKGROUND : new Color(0xF4, 0xF5, 0xF7);
+        // The chooser is built from the global defaults, and those are dark in
+        // the dark palette, so its combo boxes and fields came out dark while its
+        // system painted text stayed black. The light defaults are put in place
+        // for the moment it takes to rebuild the chooser, then put back. This runs
+        // on the event thread, so nothing else observes the temporary values.
+        java.util.Map<String, Object> saved = new java.util.LinkedHashMap<>();
+        for (java.util.Map.Entry<String, Object> entry : LIGHT_CHOOSER_DEFAULTS.entrySet()) {
+            String key = entry.getKey();
+            saved.put(key, javax.swing.UIManager.get(key));
+            javax.swing.UIManager.put(key, entry.getValue());
+        }
+        try {
+            javax.swing.SwingUtilities.updateComponentTreeUI(chooser);
+        } finally {
+            for (java.util.Map.Entry<String, Object> entry : saved.entrySet()) {
+                if (entry.getValue() == null) {
+                    javax.swing.UIManager.getDefaults().remove(entry.getKey());
+                } else {
+                    javax.swing.UIManager.put(entry.getKey(), entry.getValue());
+                }
+            }
+        }
+        // The file chooser keeps the system colours whatever the palette is.
+        // Its labels, its buttons and its short cut side bar are painted by the
+        // Windows look and feel straight from the system theme, so a dark
+        // background left them black and unreadable and nothing set on the
+        // components could change that. On the system background they are
+        // readable in both palettes, which is the point.
+        Color field = java.awt.Color.WHITE;
+        Color chrome = new Color(0xF4, 0xF5, 0xF7);
         chooser.setBackground(chrome);
-        chooser.setForeground(WINDOW_FOREGROUND);
+        chooser.setForeground(FOREGROUND_ON_LIGHT);
         styleDescendants(chooser, field, chrome);
         chooser.repaint();
 
@@ -575,11 +641,10 @@ public final class Theme {
                 // the look and feel resets their colours as it goes. Several
                 // passes over the first second and a half land after all of that,
                 // which is what colours the labels that stayed black.
-                final int[] remaining = {6};
-                passes = new javax.swing.Timer(250, tick -> {
-                    Color passField = isDark() ? EDITOR_BACKGROUND : java.awt.Color.WHITE;
-                    Color passChrome = isDark() ? WINDOW_BACKGROUND
-                            : new Color(0xF4, 0xF5, 0xF7);
+                final int[] remaining = {10};
+                passes = new javax.swing.Timer(300, tick -> {
+                    Color passField = java.awt.Color.WHITE;
+                    Color passChrome = new Color(0xF4, 0xF5, 0xF7);
                     styleDescendants(chooser, passField, passChrome);
                     // Changing a colour on a component does not necessarily mark
                     // the finished window for repainting, and the labels and
@@ -626,28 +691,35 @@ public final class Theme {
         boolean leaf = true;
         if (component instanceof javax.swing.JTable table) {
             table.setBackground(field);
-            table.setForeground(EDITOR_FOREGROUND);
-            table.setGridColor(isDark() ? tint(chrome, 24) : new Color(0xD0, 0xD4, 0xDA));
+            table.setForeground(FOREGROUND_ON_LIGHT);
+            table.setGridColor(new Color(0xD0, 0xD4, 0xDA));
             if (table.getTableHeader() != null) {
-                table.getTableHeader().setBackground(isDark() ? tint(chrome, 16)
-                        : new Color(0xE8, 0xEA, 0xED));
-                table.getTableHeader().setForeground(WINDOW_FOREGROUND);
+                table.getTableHeader().setBackground(new Color(0xE8, 0xEA, 0xED));
+                table.getTableHeader().setForeground(FOREGROUND_ON_LIGHT);
             }
         } else if (component instanceof javax.swing.JList<?> list) {
             list.setBackground(field);
-            list.setForeground(EDITOR_FOREGROUND);
+            list.setForeground(FOREGROUND_ON_LIGHT);
         } else if (component instanceof javax.swing.text.JTextComponent text) {
             text.setBackground(field);
-            text.setForeground(EDITOR_FOREGROUND);
-            text.setCaretColor(EDITOR_FOREGROUND);
+            text.setForeground(FOREGROUND_ON_LIGHT);
+            text.setCaretColor(FOREGROUND_ON_LIGHT);
         } else if (component instanceof javax.swing.JLabel label) {
-            label.setForeground(isDark() ? WINDOW_FOREGROUND : new Color(0x1F, 0x23, 0x29));
+            label.setForeground(FOREGROUND_ON_LIGHT);
         } else if (component instanceof javax.swing.JComboBox<?> combo) {
             combo.setBackground(field);
-            combo.setForeground(EDITOR_FOREGROUND);
+            combo.setForeground(FOREGROUND_ON_LIGHT);
+            combo.setOpaque(true);
+            if (combo.isEditable() && combo.getEditor() != null
+                    && combo.getEditor().getEditorComponent()
+                            instanceof javax.swing.text.JTextComponent editor) {
+                editor.setBackground(field);
+                editor.setForeground(FOREGROUND_ON_LIGHT);
+                editor.setCaretColor(FOREGROUND_ON_LIGHT);
+            }
         } else if (component instanceof javax.swing.JButton button) {
-            button.setBackground(BUTTON_BACKGROUND);
-            button.setForeground(WINDOW_FOREGROUND);
+            button.setBackground(new Color(0xF0, 0xF0, 0xF0));
+            button.setForeground(FOREGROUND_ON_LIGHT);
         } else if (component instanceof javax.swing.JViewport viewport) {
             viewport.setBackground(field);
         } else if (component instanceof javax.swing.JScrollPane scroll) {
