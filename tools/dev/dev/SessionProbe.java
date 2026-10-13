@@ -66,6 +66,11 @@ public final class SessionProbe {
             }
 
             @Override
+            public void onAwaitingInput() {
+                LOG.append("  -- waiting for input\n");
+            }
+
+            @Override
             public void onFinished(int exitCode, boolean success) {
                 LOG.append("  --> finished exit=").append(exitCode)
                         .append(" success=").append(success).append('\n');

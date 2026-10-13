@@ -60,6 +60,8 @@ public class ConsolePane extends JPanel {
     private String draft = "";
     /** True while the history is writing the field, so listeners stand aside. */
     private boolean recalling;
+    /** True while the interpreter is waiting for an answer to a question. */
+    private boolean awaitingInput;
 
     private record Segment(String text, Color color) {
     }
@@ -173,8 +175,15 @@ public class ConsolePane extends JPanel {
         historyIndex = history.size();
         draft = "";
         input.setText("");
-        startBlock();
+        boolean answer = awaitingInput;
+        awaitingInput = false;
+        if (!answer) {
+            startBlock();
+        }
         inputHandler.accept(command);
+        if (answer) {
+            setAwaitingInput(false);
+        }
     }
 
     /**
@@ -216,6 +225,27 @@ public class ConsolePane extends JPanel {
      */
     public void setInputHandler(java.util.function.Consumer<String> handler) {
         this.inputHandler = handler == null ? command -> { } : handler;
+    }
+
+    /**
+     * Marks the console as waiting for an answer to an interactive command.
+     *
+     * @param awaiting {@code true} while the interpreter is waiting
+     */
+    public void setAwaitingInput(boolean awaiting) {
+        SwingUtilities.invokeLater(() -> {
+            awaitingInput = awaiting;
+            prompt.setForeground(awaiting ? Theme.CONSOLE_SYSTEM : Theme.CONSOLE_FOREGROUND);
+            input.setToolTipText(awaiting
+                    ? Msg.CONSOLE_AWAITING_INPUT_TIP.text()
+                    : Msg.CONSOLE_INPUT_TIP.text());
+            repaint();
+        });
+    }
+
+    /** @return {@code true} while the interpreter is waiting for an answer. */
+    public boolean isAwaitingInput() {
+        return awaitingInput;
     }
 
     /** Sets the prompt shown before the input field. */

@@ -25,6 +25,11 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 public final class ShellSession implements AutoCloseable {
 
+    /** How long a run may stall before it is treated as waiting for input. */
+    private static final long INTERACTIVE_AFTER_MS = 900;
+    /** How long to wait after an answer before closing the run. */
+    private static final long INPUT_SETTLE_MS = 600;
+
     /** Receives everything a session produces. Called from reader threads. */
     public interface Listener {
 
@@ -33,6 +38,15 @@ public final class ShellSession implements AutoCloseable {
 
         /** Called once per submitted script, after the marker was seen. */
         void onFinished(int exitCode, boolean success);
+
+        /**
+         * Called when a script has stalled and looks like it is waiting for an
+         * answer, as {@code time} or {@code set /p} do.
+         *
+         * <p>The console switches to passing lines straight through at that
+         * point, instead of queueing them as new commands.</p>
+         */
+        void onAwaitingInput();
 
         /** Called when the interpreter process ended. */
         void onClosed(int exitCode);
@@ -59,6 +73,20 @@ public final class ShellSession implements AutoCloseable {
     private StringBuilder captureBuffer;
     private String pendingMarker;
     private long sequence;
+    /** Set while the interpreter looks like it is waiting for an answer. */
+    private volatile boolean awaitingInput;
+    /** Set once any output has arrived for the run in progress. */
+    private volatile boolean runProducedOutput;
+    /** Set while the script being written is a known interactive command. */
+    private boolean interactiveScript;
+    /** Set when the caller must be told the interpreter wants an answer. */
+    private boolean notifyAwaitingInput;
+    private final java.util.concurrent.ScheduledExecutorService watchdogs =
+            java.util.concurrent.Executors.newSingleThreadScheduledExecutor(runnable -> {
+                Thread thread = new Thread(runnable, "shell-watchdog");
+                thread.setDaemon(true);
+                return thread;
+            });
     private volatile boolean closed;
     private volatile boolean closeRequested;
     private volatile int exitCode = -1;
@@ -126,6 +154,7 @@ public final class ShellSession implements AutoCloseable {
             Thread.currentThread().interrupt();
         }
         closed = true;
+        watchdogs.shutdownNow();
         synchronized (lock) {
             queue.clear();
             if (pending != null) {
@@ -210,6 +239,9 @@ public final class ShellSession implements AutoCloseable {
     private void emit(String text, boolean error) {
         if (text.isEmpty()) {
             return;
+        }
+        if (!error) {
+            runProducedOutput = true;
         }
         // A query keeps its output for the caller instead of showing it.
         if (!error && captureBuffer != null) {
@@ -328,6 +360,38 @@ public final class ShellSession implements AutoCloseable {
                 startNextLocked();
             }
         }
+        if (notifyAwaitingInput) {
+            notifyAwaitingInput = false;
+            listener.onAwaitingInput();
+        }
+    }
+
+    /**
+     * @param script the script about to run
+     * @return {@code true} when it is a command that asks the user a question
+     */
+    private static boolean looksInteractive(String script) {
+        if (script == null || script.isBlank()) {
+            return false;
+        }
+        String lowered = script.toLowerCase(java.util.Locale.ROOT);
+        // Anything that reads a value from the console.
+        if (lowered.contains("set /p") || lowered.contains("set/p")) {
+            return true;
+        }
+        if (lowered.contains("pause") || lowered.contains("choice ")
+                || lowered.contains("diskpart") || lowered.contains("ftp ")) {
+            return true;
+        }
+        for (String line : lowered.split("\\R")) {
+            String first = line.strip().split("\\s+")[0];
+            if (first.equals("time") || first.equals("date") || first.equals("more")
+                    || first.equals("sort") || first.equals("pause")
+                    || first.equals("choice") || first.equals("diskpart")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Writes the next queued script. The caller must hold {@link #lock}. */
@@ -339,6 +403,10 @@ public final class ShellSession implements AutoCloseable {
         String marker = "#M#" + sessionId + "#" + (++sequence) + "#";
         pendingMarker = marker;
         pending = job.future();
+        runProducedOutput = false;
+        awaitingInput = false;
+        interactiveScript = looksInteractive(job.script());
+        notifyAwaitingInput = false;
         if (job.capture() != null) {
             pendingCapture = job.capture();
             captureBuffer = new StringBuilder();
@@ -352,9 +420,22 @@ public final class ShellSession implements AutoCloseable {
                     payload.append('\n');
                 }
             }
-            payload.append(markerCommand(marker)).append('\n');
-            stdin.write(payload.toString());
-            stdin.flush();
+            if (interactiveScript) {
+                // An interactive command reads its answer from the same input
+                // stream, so the marker would be read as that answer: answering
+                // time with the marker echo is what produced "the system cannot
+                // accept the input time". The marker is sent once the answer has
+                // been dealt with instead.
+                awaitingInput = true;
+                interactiveScript = false;
+                stdin.write(payload.toString());
+                stdin.flush();
+                notifyAwaitingInput = true;
+            } else {
+                payload.append(markerCommand(marker)).append('\n');
+                stdin.write(payload.toString());
+                stdin.flush();
+            }
         } catch (IOException e) {
             pending = null;
             pendingMarker = null;
@@ -366,6 +447,108 @@ public final class ShellSession implements AutoCloseable {
             }
             job.future().completeExceptionally(e);
             listener.onFailure("Could not write to the interpreter: " + e.getMessage());
+        }
+    }
+
+    // --- interactive input --------------------------------------------------
+
+    /**
+     * Starts the timer that decides a script is waiting for an answer.
+     *
+     * <p>An interactive command such as {@code time} prints its prompt without a
+     * trailing newline and then blocks, so the reader never sees a complete line
+     * and nothing else can tell us it is waiting. A stall after output has
+     * arrived is the signal.</p>
+     */
+    private void scheduleInteractiveCheck() {
+        if (closed) {
+            return;
+        }
+        try {
+            watchdogs.schedule(this::checkInteractive, INTERACTIVE_AFTER_MS,
+                    java.util.concurrent.TimeUnit.MILLISECONDS);
+        } catch (java.util.concurrent.RejectedExecutionException ignored) {
+            // The session closed between the check and the scheduling.
+        }
+    }
+
+    private void checkInteractive() {
+        synchronized (lock) {
+            if (closed || pending == null || awaitingInput || !runProducedOutput) {
+                return;
+            }
+            awaitingInput = true;
+        }
+        listener.onAwaitingInput();
+    }
+
+    /** @return {@code true} while the interpreter is waiting for an answer. */
+    public boolean isAwaitingInput() {
+        return awaitingInput && !closed;
+    }
+
+    /**
+     * Passes a line straight to the interpreter, without a marker.
+     *
+     * <p>This is what an answer to an interactive prompt is. A marker cannot be
+     * appended, because the interpreter would read it as the answer, which is
+     * exactly what happened before: {@code time} was answered with the marker
+     * echo and reported an unusable time.</p>
+     *
+     * @param line the text to send, without a newline
+     */
+    public void sendInput(String line) {
+        if (closed) {
+            return;
+        }
+        try {
+            synchronized (lock) {
+                stdin.write((line == null ? "" : line) + "\n");
+                stdin.flush();
+                runProducedOutput = false;
+            }
+        } catch (IOException e) {
+            listener.onFailure("Could not write to the interpreter: " + e.getMessage());
+            return;
+        }
+        scheduleInputSettledCheck();
+    }
+
+    /**
+     * Closes the run once the answer has been dealt with.
+     *
+     * <p>When the interpreter finished with the answer it goes back to its
+     * prompt and blocks, so the end-of-run marker that was sent with the
+     * original command has already been consumed. A fresh marker is sent to
+     * learn the exit code, but only if the command has gone quiet: if it asked
+     * another question the marker would be swallowed as that answer.</p>
+     */
+    private void scheduleInputSettledCheck() {
+        if (closed) {
+            return;
+        }
+        try {
+            watchdogs.schedule(() -> {
+                synchronized (lock) {
+                    if (closed || pending == null || !awaitingInput) {
+                        return;
+                    }
+                    // The marker is sent whatever the command printed in the
+                    // meantime. Waiting for silence looked safer, but finishing
+                    // the answer always prints something, so the run was never
+                    // closed at all.
+                    pendingMarker = "#M#" + sessionId + "#" + (++sequence) + "#";
+                    try {
+                        stdin.write(markerCommand(pendingMarker) + "\n");
+                        stdin.flush();
+                    } catch (IOException e) {
+                        listener.onFailure("Could not write to the interpreter: "
+                                + e.getMessage());
+                    }
+                }
+            }, INPUT_SETTLE_MS, java.util.concurrent.TimeUnit.MILLISECONDS);
+        } catch (java.util.concurrent.RejectedExecutionException ignored) {
+            // The session is closing.
         }
     }
 

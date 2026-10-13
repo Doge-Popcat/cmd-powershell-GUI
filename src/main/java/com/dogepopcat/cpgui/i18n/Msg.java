@@ -117,6 +117,11 @@ public enum Msg {
             "\u6d4f\u89c8\u547d\u4ee4\u5e76\u6253\u5f00\u5b98\u65b9\u6587\u6863"),
 
     // --- tool bar and location bar ----------------------------------------
+    CONSOLE_AWAITING_INPUT("%s is waiting for input; type the answer below.",
+            "%s \u6b63\u5728\u7b49\u5f85\u8f93\u5165\uff0c\u8bf7\u5728\u4e0b\u65b9\u76f4\u63a5\u8f93\u5165\u56de\u7b54\u3002"),
+    STATUS_AWAITING_INPUT("Waiting for input", "\u7b49\u5f85\u8f93\u5165\u4e2d"),
+    CONSOLE_AWAITING_INPUT_TIP("Type the answer and press Enter",
+            "\u8f93\u5165\u56de\u7b54\u540e\u6309\u56de\u8f66"),
     TOOLBAR_UNDO("Undo", "\u64a4\u9500"),
     TOOLBAR_REDO("Redo", "\u91cd\u505a"),
     TOOLBAR_INTERPRETER("Interpreter:", "\u89e3\u91ca\u5668\uff1a"),

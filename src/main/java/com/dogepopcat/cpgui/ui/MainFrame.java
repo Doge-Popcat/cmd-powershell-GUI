@@ -209,10 +209,19 @@ public class MainFrame extends JFrame {
         bottomTabs.addTab(Msg.PROBLEMS_TAB.text(), problems);
         bottomTabs.addTab(Msg.OUTPUT_TAB.text(), console);
         bottomTabs.setBorder(BorderFactory.createEmptyBorder());
-        // A command typed at the console prompt runs in the active tab.
+        // A command typed at the console prompt runs in the active tab, unless an
+        // interactive command is asking a question, in which case the line is the
+        // answer and is passed straight through.
         console.setInputHandler(command -> {
             EditorTab target = editorTabs.current();
             if (target == null) {
+                return;
+            }
+            ShellSession session = sessions.peek(target);
+            if (session != null && session.isAwaitingInput()) {
+                console.append(promptName(target.shellKind()) + " " + command
+                        + System.lineSeparator(), console.commandColor());
+                session.sendInput(command);
                 return;
             }
             execute(target, command);
@@ -1628,6 +1637,18 @@ public class MainFrame extends JFrame {
         @Override
         public void onOutput(String text, boolean error) {
             console.append(text, console.outputColor(error));
+        }
+
+        @Override
+        public void onAwaitingInput() {
+            // The interpreter is sitting on a question, so say so and leave the
+            // prompt in place for the answer.
+            SwingUtilities.invokeLater(() -> {
+                console.appendSystem(Msg.CONSOLE_AWAITING_INPUT.format(
+                        tab.shellKind().displayName()) + System.lineSeparator());
+                statusBar.setMessage(Msg.STATUS_AWAITING_INPUT.text());
+                console.setAwaitingInput(true);
+            });
         }
 
         @Override
