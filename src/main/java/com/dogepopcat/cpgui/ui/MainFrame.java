@@ -797,7 +797,7 @@ public class MainFrame extends JFrame {
     /** Asks the user for a script and opens it in a new tab. */
     public void openScript() {
         javax.swing.JFileChooser chooser = scriptChooser(Msg.DIALOG_OPEN_SCRIPT.text());
-        if (chooser.showOpenDialog(this) != javax.swing.JFileChooser.APPROVE_OPTION) {
+        if (!showFileDialog(chooser, Msg.DIALOG_OPEN_SCRIPT.text(), Msg.ACTION_OPEN.text())) {
             return;
         }
         File file = chooser.getSelectedFile();
@@ -905,7 +905,7 @@ public class MainFrame extends JFrame {
     public boolean saveTabAs(EditorTab tab) {
         javax.swing.JFileChooser chooser = scriptChooser(Msg.DIALOG_SAVE_SCRIPT.text());
         chooser.setSelectedFile(new File(workspace, defaultNameFor(tab)));
-        if (chooser.showSaveDialog(this) != javax.swing.JFileChooser.APPROVE_OPTION) {
+        if (!showFileDialog(chooser, Msg.DIALOG_SAVE_SCRIPT.text(), Msg.ACTION_SAVE.text())) {
             return false;
         }
         File target = ensureExtension(chooser.getSelectedFile(), tab.shellKind());
@@ -930,6 +930,41 @@ public class MainFrame extends JFrame {
             return file;
         }
         return new File(file.getParentFile(), name + "." + kind.fileExtension());
+    }
+
+    /**
+     * Shows a file chooser in a dialog this application owns.
+     *
+     * <p>The Windows file chooser builds its own dialog, complete with a short cut
+     * side bar, and colours those parts from the system theme. With a dark
+     * background that left the labels, the buttons and the side bar black and
+     * unreadable, and nothing set on the components could change it. Hosting the
+     * chooser in a plain dialog avoids that code path entirely: every part of it
+     * is then drawn from the colours set here.</p>
+     *
+     * @param chooser     the chooser to show
+     * @param title       the dialog title
+     * @param approveText the label of the confirming button
+     * @return {@code true} when the user confirmed
+     */
+    private boolean showFileDialog(javax.swing.JFileChooser chooser, String title,
+                                   String approveText) {
+        Theme.styleChooser(chooser);
+        javax.swing.JDialog dialog = new javax.swing.JDialog(this, title, true);
+        dialog.setContentPane(chooser);
+        boolean[] approved = {false};
+        chooser.addActionListener(e -> {
+            approved[0] = javax.swing.JFileChooser.APPROVE_SELECTION.equals(e.getActionCommand());
+            dialog.dispose();
+        });
+        dialog.setSize(880, 620);
+        dialog.setMinimumSize(new java.awt.Dimension(680, 480));
+        dialog.setLocationRelativeTo(this);
+        // The buttons the chooser builds carry its own text for the action.
+        Theme.styleChooser(chooser);
+        dialog.setVisible(true);
+        dialog.dispose();
+        return approved[0] && chooser.getSelectedFile() != null;
     }
 
     private javax.swing.JFileChooser scriptChooser(String title) {
@@ -1399,7 +1434,8 @@ public class MainFrame extends JFrame {
         chooser.setFileSelectionMode(javax.swing.JFileChooser.DIRECTORIES_ONLY);
         chooser.setAcceptAllFileFilterUsed(false);
         chooser.setApproveButtonText(Msg.DIALOG_USE_FOLDER.text());
-        if (chooser.showOpenDialog(this) != javax.swing.JFileChooser.APPROVE_OPTION) {
+        if (!showFileDialog(chooser, Msg.DIALOG_CHOOSE_FOLDER.text(),
+                Msg.DIALOG_USE_FOLDER.text())) {
             statusBar.setMessage(Msg.STATUS_WORKSPACE_UNCHANGED.text());
             return;
         }
