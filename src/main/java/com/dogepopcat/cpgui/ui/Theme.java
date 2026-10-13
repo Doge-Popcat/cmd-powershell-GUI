@@ -384,6 +384,7 @@ public final class Theme {
         set("PopupMenuUI", "javax.swing.plaf.basic.BasicPopupMenuUI");
         set("OptionPaneUI", "javax.swing.plaf.basic.BasicOptionPaneUI");
 
+
         set("ToolBarUI", "javax.swing.plaf.basic.BasicToolBarUI");
         set("ListUI", "javax.swing.plaf.basic.BasicListUI");
         set("TreeUI", "javax.swing.plaf.basic.BasicTreeUI");
@@ -580,6 +581,18 @@ public final class Theme {
                     Color passChrome = isDark() ? WINDOW_BACKGROUND
                             : new Color(0xF4, 0xF5, 0xF7);
                     styleDescendants(chooser, passField, passChrome);
+                    // Changing a colour on a component does not necessarily mark
+                    // the finished window for repainting, and the labels and
+                    // buttons kept their black text on screen while their colours
+                    // already read light. Everything is marked dirty explicitly.
+                    chooser.revalidate();
+                    repaintAll(chooser);
+                    java.awt.Window window = javax.swing.SwingUtilities
+                            .getWindowAncestor(chooser);
+                    if (window != null) {
+                        window.revalidate();
+                        window.repaint();
+                    }
                     chooser.repaint();
                     if (--remaining[0] <= 0) {
                         passes.stop();
@@ -589,6 +602,16 @@ public final class Theme {
                 passes.start();
             }
         });
+    }
+
+    /** Marks a component and everything under it for repainting. */
+    private static void repaintAll(java.awt.Component component) {
+        component.repaint();
+        if (component instanceof java.awt.Container container) {
+            for (java.awt.Component child : container.getComponents()) {
+                repaintAll(child);
+            }
+        }
     }
 
     /**
